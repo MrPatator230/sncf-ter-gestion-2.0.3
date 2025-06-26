@@ -1,0 +1,12 @@
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/_document": "pages/_document.js",
+  "/login": "pages/login.js",
+  "/admin/compositions-trains": "pages/admin/compositions-trains.js",
+  "/api/schedules/by-train-number": "pages/api/schedules/by-train-number.js",
+  "/api/schedules": "pages/api/schedules.js",
+  "/admin/horaires": "pages/admin/horaires.js",
+  "/api/materiels-roulants": "pages/api/materiels-roulants.js",
+  "/api/entreprise": "pages/api/entreprise.js"
+}

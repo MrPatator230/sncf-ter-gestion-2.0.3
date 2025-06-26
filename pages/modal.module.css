@@ -1,0 +1,161 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.stationsModal {
+  background-color: #e8f5e9;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.stationsModalHeader {
+  background: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stationsModalHeader h3 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: #000066;
+}
+
+.stationsModalHeader p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  color: #666;
+}
+
+.stationsModalContent {
+  padding: 2rem;
+  background: white;
+  margin: 1rem;
+  border-radius: 8px;
+}
+
+.stationsGrid {
+  position: relative;
+}
+
+.stationsHeader {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.stationRow {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.stationRow.statusCancelled {
+  position: relative;
+  color: #dc3545;
+  opacity: 0.8;
+}
+
+.stationRow.statusCancelled::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #dc3545;
+}
+
+.stationTime {
+  font-weight: 600;
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.delayedTimes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.delayedNewTime {
+  color: #fd7e14;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.delayedOriginalTime {
+  text-decoration: line-through;
+  color: #666;
+  font-size: 8px;
+  margin-top: 2px;
+}
+
+.stationName {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.stationDot {
+  width: 12px;
+  height: 12px;
+  background-color: #ffd700;
+  border-radius: 50%;
+  margin-right: 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+.stationTrack {
+  text-align: center;
+}
+
+.stationsGrid::before {
+  content: '';
+  position: absolute;
+  top: 2.5rem;
+  bottom: 0.5rem;
+  left: 105px;
+  width: 2px;
+  background-color: #ffd700;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .stationsModal {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .stationsGrid {
+    font-size: 0.9rem;
+  }
+}
