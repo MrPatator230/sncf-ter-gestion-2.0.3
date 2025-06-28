@@ -18,15 +18,51 @@ const logoNameMap = {
   '/images/logo-ter-pddl.svg': 'SNCF TER PDDL',
 };
 
+
 function InfosTrafficsWidget({ onSelectInfo }) {
   const [trafficInfos, setTrafficInfos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const savedTrafficInfos = localStorage.getItem('trafficInfos');
-    if (savedTrafficInfos) {
-      setTrafficInfos(JSON.parse(savedTrafficInfos));
+    async function fetchInfos() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/infos-trafic');
+        if (!res.ok) throw new Error('Erreur lors du chargement des infos trafic');
+        const data = await res.json();
+        setTrafficInfos(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchInfos();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="sncf-card h-100">
+        <div className="sncf-card-body">
+          <h2 className="h4 mb-3">Infos Traffics</h2>
+          <p>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="sncf-card h-100">
+        <div className="sncf-card-body">
+          <h2 className="h4 mb-3">Infos Traffics</h2>
+          <p className="text-danger">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (trafficInfos.length === 0) {
     return (
@@ -67,20 +103,53 @@ function InfosTrafficsWidget({ onSelectInfo }) {
 
 function ActualitesWidget({ onSelectPost }) {
   const [newsPosts, setNewsPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const savedNews = localStorage.getItem('newsPosts');
-    if (savedNews) {
-      const posts = JSON.parse(savedNews);
-      // Sort by date descending, handle missing dates by putting them last
-      posts.sort((a, b) => {
-        const dateA = a.date ? new Date(a.date) : new Date(0);
-        const dateB = b.date ? new Date(b.date) : new Date(0);
-        return dateB - dateA;
-      });
-      setNewsPosts(posts.slice(0, 5));
+    async function fetchNews() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/actualites');
+        if (!res.ok) throw new Error('Erreur lors du chargement des actualités');
+        const data = await res.json();
+        data.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0);
+          const dateB = b.date ? new Date(b.date) : new Date(0);
+          return dateB - dateA;
+        });
+        setNewsPosts(data.slice(0, 5));
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchNews();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="sncf-card h-100">
+        <div className="sncf-card-body">
+          <h2 className="h4 mb-3">Actualités</h2>
+          <p>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="sncf-card h-100">
+        <div className="sncf-card-body">
+          <h2 className="h4 mb-3">Actualités</h2>
+          <p className="text-danger">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (newsPosts.length === 0) {
     return (
