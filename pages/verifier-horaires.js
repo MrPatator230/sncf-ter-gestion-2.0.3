@@ -1,10 +1,10 @@
 
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getAllStations } from '../utils/stationUtils';
 import SuggestionList from '../components/SuggestionList';
 
 export default function VerifierHoraires() {
@@ -36,8 +36,22 @@ export default function VerifierHoraires() {
   const viaRef = useRef(null);
 
   useEffect(() => {
-    // Charger les stations depuis le localStorage
-    setStations(getAllStations());
+  // Charger les stations depuis l'API
+  const fetchStations = async () => {
+    try {
+      const response = await fetch('/api/stations');
+      if (!response.ok) {
+        throw new Error('Failed to fetch stations');
+      }
+      const data = await response.json();
+      setStations(data.map(station => station.name));
+    } catch (error) {
+      console.error('Error fetching stations:', error);
+      setStations([]);
+    }
+  };
+
+  fetchStations();
 
     // Ajouter les gestionnaires de clic pour fermer les suggestions
     const handleClickOutside = (event) => {
@@ -63,8 +77,8 @@ export default function VerifierHoraires() {
     if (input.length < 2) return [];
     return stations
       .filter(station => 
-        station.name.toLowerCase().includes(input.toLowerCase()) &&
-        !excludeStations.includes(station.name)
+        station.toLowerCase().includes(input.toLowerCase()) &&
+        !excludeStations.includes(station)
       )
       .slice(0, 5); // Limiter à 5 suggestions
   };

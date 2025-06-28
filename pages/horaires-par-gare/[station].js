@@ -27,8 +27,18 @@ export default function StationSchedule() {
         }
         const data = await response.json();
         // Filter departures and arrivals client-side
-        setDepartures(data.filter(schedule => schedule.departureStation === station));
-        setArrivals(data.filter(schedule => schedule.arrivalStation === station));
+        console.log('Fetched schedules:', data);
+        console.log('Filtering for station:', station);
+        const normalize = (str) => str?.trim().toLowerCase();
+        const normalizedStation = normalize(station);
+        setDepartures(data.filter(schedule =>
+          normalize(schedule.departureStation) === normalizedStation ||
+          (Array.isArray(schedule.servedStations) && schedule.servedStations.some(s => normalize(s.name) === normalizedStation && s.departureTime))
+        ));
+        setArrivals(data.filter(schedule =>
+          normalize(schedule.arrivalStation) === normalizedStation ||
+          (Array.isArray(schedule.servedStations) && schedule.servedStations.some(s => normalize(s.name) === normalizedStation && s.arrivalTime))
+        ));
       } catch (err) {
         setErrorDepartures(err.message);
         setErrorArrivals(err.message);
@@ -70,7 +80,15 @@ export default function StationSchedule() {
               </thead>
               <tbody>
                 {departures.map(schedule => {
-                  const time = schedule.departureTime;
+                  const normalize = (str) => str?.trim().toLowerCase();
+                  const normalizedStation = normalize(station);
+                  let time = schedule.departureTime;
+                  if (normalize(schedule.departureStation) !== normalizedStation && Array.isArray(schedule.servedStations)) {
+                    const served = schedule.servedStations.find(s => normalize(s.name) === normalizedStation);
+                    if (served && served.departureTime) {
+                      time = served.departureTime;
+                    }
+                  }
                   const destination = schedule.arrivalStation;
                   const status = schedule.isCancelled ? 'Supprimé' : (schedule.delayMinutes ? `Retard ${schedule.delayMinutes} min` : 'À l\'heure');
 
@@ -111,7 +129,15 @@ export default function StationSchedule() {
               </thead>
               <tbody>
                 {arrivals.map(schedule => {
-                  const time = schedule.arrivalTime;
+                  const normalize = (str) => str?.trim().toLowerCase();
+                  const normalizedStation = normalize(station);
+                  let time = schedule.arrivalTime;
+                  if (normalize(schedule.arrivalStation) !== normalizedStation && Array.isArray(schedule.servedStations)) {
+                    const served = schedule.servedStations.find(s => normalize(s.name) === normalizedStation);
+                    if (served && served.arrivalTime) {
+                      time = served.arrivalTime;
+                    }
+                  }
                   const origin = schedule.departureStation;
                   const status = schedule.isCancelled ? 'Supprimé' : (schedule.delayMinutes ? `Retard ${schedule.delayMinutes} min` : 'À l\'heure');
 

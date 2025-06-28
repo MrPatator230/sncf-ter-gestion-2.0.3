@@ -6,6 +6,7 @@ import StationSearchForm from '../../components/StationSearchForm';
 export default function HorairesParGare() {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchStations = async () => {
@@ -26,6 +27,10 @@ export default function HorairesParGare() {
 
     fetchStations();
   }, []);
+
+  const filteredStations = stations.filter(station =>
+    station.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -52,7 +57,7 @@ export default function HorairesParGare() {
                     Consultez les horaires des trains au départ et à l'arrivée de votre gare
                   </p>
                 </div>
-                <StationSearchForm />
+                <StationSearchForm searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
               </div>
             </div>
 
@@ -63,11 +68,11 @@ export default function HorairesParGare() {
               <div className="card-body">
                 {loading ? (
                   <div>Chargement des gares...</div>
-                ) : stations.length === 0 ? (
+                ) : filteredStations.length === 0 ? (
                   <div>Aucune gare trouvée.</div>
                 ) : (
                   <ul className="list-unstyled">
-                    {stations.map((station) => (
+                    {filteredStations.map((station) => (
                       <li key={station.name}>
                         <Link legacyBehavior href={`/horaires-par-gare/${encodeURIComponent(station.name)}`}>
                           <a>{station.name}</a>

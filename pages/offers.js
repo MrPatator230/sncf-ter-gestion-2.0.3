@@ -34,98 +34,44 @@ export default function Offers() {
   useEffect(() => {
     if (router.query.departureStation) {
       const { departureStation, arrivalStation, viaStation, departureDate, returnDate } = router.query;
-      
-      // Récupérer les horaires depuis localStorage
-      const savedSchedules = localStorage.getItem('schedules');
-      if (savedSchedules) {
-        const allSchedules = JSON.parse(savedSchedules);
-        
-        // Filtrer les horaires pour l'aller
-        let departureSchedules = allSchedules.filter(schedule => {
-          // Vérifier si le train correspond au trajet direct
-          const matchesDirectRoute = schedule.departureStation === departureStation && 
-                                   schedule.arrivalStation === arrivalStation;
 
-          // Vérifier si le trajet correspond via les gares desservies
-          const matchesServedStations = schedule.servedStations?.some(station => {
-            const stationIndex = schedule.servedStations.findIndex(s => s.name === station.name);
-            const departureIndex = schedule.departureStation === departureStation ? -1 : 
-              schedule.servedStations.findIndex(s => s.name === departureStation);
-            const arrivalIndex = schedule.arrivalStation === arrivalStation ? schedule.servedStations.length :
-              schedule.servedStations.findIndex(s => s.name === arrivalStation);
-            
-            return (
-              // La gare de départ est soit la gare principale soit une gare desservie
-              (schedule.departureStation === departureStation || departureIndex !== -1) &&
-              // La gare d'arrivée est soit la gare principale soit une gare desservie
-              (schedule.arrivalStation === arrivalStation || arrivalIndex !== -1) &&
-              // Si une gare via est spécifiée, elle doit être dans les gares desservies entre départ et arrivée
-              (!viaStation || (
-                station.name === viaStation &&
-                stationIndex > (departureIndex === -1 ? -1 : departureIndex) &&
-                stationIndex < (arrivalIndex === -1 ? schedule.servedStations.length : arrivalIndex)
-              ))
-            );
+      const fetchSchedules = async () => {
+        try {
+          const params = new URLSearchParams({
+            departureStation,
+            arrivalStation,
+            viaStation: viaStation || '',
+            departureDate,
+            returnDate: returnDate || ''
           });
 
-          // Vérifier si le train circule ce jour de la semaine
-          const dayOfWeek = formatDay(new Date(departureDate)).toLowerCase();
-          const englishDayOfWeek = DAYS_MAPPING[dayOfWeek];
-          const runsOnThisDay = schedule.joursCirculation?.includes(englishDayOfWeek);
-
-          return (matchesDirectRoute || matchesServedStations) && runsOnThisDay;
-        }).map(schedule => {
-          // Créer une copie de l'horaire pour l'adapter à l'affichage
-          const adaptedSchedule = { ...schedule };
-          
-          // Si la gare de départ est une gare desservie, ajuster les horaires
-          if (departureStation !== schedule.departureStation) {
-            const servedStation = schedule.servedStations.find(s => s.name === departureStation);
-            if (servedStation) {
-              adaptedSchedule.displayDepartureTime = servedStation.departureTime;
-              adaptedSchedule.displayDepartureStation = departureStation;
-            }
-          } else {
-            adaptedSchedule.displayDepartureTime = schedule.departureTime;
-            adaptedSchedule.displayDepartureStation = schedule.departureStation;
+          const response = await fetch(`/api/schedules/by-station?${params.toString()}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch schedules');
           }
+          const allSchedules = await response.json();
+          console.log('Fetched schedules:', allSchedules);
 
-          // Si la gare d'arrivée est une gare desservie, ajuster les horaires
-          if (arrivalStation !== schedule.arrivalStation) {
-            const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
-            if (servedStation) {
-              adaptedSchedule.displayArrivalTime = servedStation.arrivalTime;
-              adaptedSchedule.displayArrivalStation = arrivalStation;
-            }
-          } else {
-            adaptedSchedule.displayArrivalTime = schedule.arrivalTime;
-            adaptedSchedule.displayArrivalStation = schedule.arrivalStation;
-          }
+          // Filtrer les horaires pour l'aller
+          let departureSchedules = allSchedules.filter(schedule => {
+            console.log('Checking schedule:', schedule);
+            // Vérifier si le train correspond au trajet direct
+            const matchesDirectRoute = schedule.departureStation === departureStation &&
+              schedule.arrivalStation === arrivalStation;
 
-          return adaptedSchedule;
-        });
-
-        // Filtrer les horaires pour le retour si une date est sélectionnée
-        let returnSchedules = null;
-        if (returnDate) {
-          returnSchedules = allSchedules.filter(schedule => {
-            // Vérifier si le train correspond au trajet direct retour
-            const matchesDirectRoute = schedule.departureStation === arrivalStation && 
-                                     schedule.arrivalStation === departureStation;
-
-            // Vérifier si le trajet retour correspond via les gares desservies
+            // Vérifier si le trajet correspond via les gares desservies
             const matchesServedStations = schedule.servedStations?.some(station => {
               const stationIndex = schedule.servedStations.findIndex(s => s.name === station.name);
-              const departureIndex = schedule.departureStation === arrivalStation ? -1 :
-                schedule.servedStations.findIndex(s => s.name === arrivalStation);
-              const arrivalIndex = schedule.arrivalStation === departureStation ? schedule.servedStations.length :
+              const departureIndex = schedule.departureStation === departureStation ? -1 :
                 schedule.servedStations.findIndex(s => s.name === departureStation);
-              
+              const arrivalIndex = schedule.arrivalStation === arrivalStation ? schedule.servedStations.length :
+                schedule.servedStations.findIndex(s => s.name === arrivalStation);
+
               return (
                 // La gare de départ est soit la gare principale soit une gare desservie
-                (schedule.departureStation === arrivalStation || departureIndex !== -1) &&
+                (schedule.departureStation === departureStation || departureIndex !== -1) &&
                 // La gare d'arrivée est soit la gare principale soit une gare desservie
-                (schedule.arrivalStation === departureStation || arrivalIndex !== -1) &&
+                (schedule.arrivalStation === arrivalStation || arrivalIndex !== -1) &&
                 // Si une gare via est spécifiée, elle doit être dans les gares desservies entre départ et arrivée
                 (!viaStation || (
                   station.name === viaStation &&
@@ -136,7 +82,7 @@ export default function Offers() {
             });
 
             // Vérifier si le train circule ce jour de la semaine
-            const dayOfWeek = formatDay(new Date(returnDate)).toLowerCase();
+            const dayOfWeek = formatDay(new Date(departureDate)).toLowerCase();
             const englishDayOfWeek = DAYS_MAPPING[dayOfWeek];
             const runsOnThisDay = schedule.joursCirculation?.includes(englishDayOfWeek);
 
@@ -144,13 +90,13 @@ export default function Offers() {
           }).map(schedule => {
             // Créer une copie de l'horaire pour l'adapter à l'affichage
             const adaptedSchedule = { ...schedule };
-            
+
             // Si la gare de départ est une gare desservie, ajuster les horaires
-            if (arrivalStation !== schedule.departureStation) {
-              const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
+            if (departureStation !== schedule.departureStation) {
+              const servedStation = schedule.servedStations.find(s => s.name === departureStation);
               if (servedStation) {
                 adaptedSchedule.displayDepartureTime = servedStation.departureTime;
-                adaptedSchedule.displayDepartureStation = arrivalStation;
+                adaptedSchedule.displayDepartureStation = departureStation;
               }
             } else {
               adaptedSchedule.displayDepartureTime = schedule.departureTime;
@@ -158,11 +104,11 @@ export default function Offers() {
             }
 
             // Si la gare d'arrivée est une gare desservie, ajuster les horaires
-            if (departureStation !== schedule.arrivalStation) {
-              const servedStation = schedule.servedStations.find(s => s.name === departureStation);
+            if (arrivalStation !== schedule.arrivalStation) {
+              const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
               if (servedStation) {
                 adaptedSchedule.displayArrivalTime = servedStation.arrivalTime;
-                adaptedSchedule.displayArrivalStation = departureStation;
+                adaptedSchedule.displayArrivalStation = arrivalStation;
               }
             } else {
               adaptedSchedule.displayArrivalTime = schedule.arrivalTime;
@@ -171,24 +117,97 @@ export default function Offers() {
 
             return adaptedSchedule;
           });
-        }
 
-        setSearchResults({
-          aller: {
-            date: departureDate,
-            trains: departureSchedules.sort((a, b) => 
-              a.displayDepartureTime.localeCompare(b.displayDepartureTime)
-            )
-          },
-          retour: returnDate ? {
-            date: returnDate,
-            trains: returnSchedules.sort((a, b) => 
-              a.displayDepartureTime.localeCompare(b.displayDepartureTime)
-            )
-          } : null
-        });
-      }
-      setIsLoading(false);
+          // Filtrer les horaires pour le retour si une date est sélectionnée
+          let returnSchedules = null;
+          if (returnDate) {
+            returnSchedules = allSchedules.filter(schedule => {
+              // Vérifier si le train correspond au trajet direct retour
+              const matchesDirectRoute = schedule.departureStation === arrivalStation &&
+                schedule.arrivalStation === departureStation;
+
+              // Vérifier si le trajet retour correspond via les gares desservies
+              const matchesServedStations = schedule.servedStations?.some(station => {
+                const stationIndex = schedule.servedStations.findIndex(s => s.name === station.name);
+                const departureIndex = schedule.departureStation === arrivalStation ? -1 :
+                  schedule.servedStations.findIndex(s => s.name === arrivalStation);
+                const arrivalIndex = schedule.arrivalStation === departureStation ? schedule.servedStations.length :
+                  schedule.servedStations.findIndex(s => s.name === departureStation);
+
+                return (
+                  // La gare de départ est soit la gare principale soit une gare desservie
+                  (schedule.departureStation === arrivalStation || departureIndex !== -1) &&
+                  // La gare d'arrivée est soit la gare principale soit une gare desservie
+                  (schedule.arrivalStation === departureStation || arrivalIndex !== -1) &&
+                  // Si une gare via est spécifiée, elle doit être dans les gares desservies entre départ et arrivée
+                  (!viaStation || (
+                    station.name === viaStation &&
+                    stationIndex > (departureIndex === -1 ? -1 : departureIndex) &&
+                    stationIndex < (arrivalIndex === -1 ? schedule.servedStations.length : arrivalIndex)
+                  ))
+                );
+              });
+
+              // Vérifier si le train circule ce jour de la semaine
+              const dayOfWeek = formatDay(new Date(returnDate)).toLowerCase();
+              const englishDayOfWeek = DAYS_MAPPING[dayOfWeek];
+              const runsOnThisDay = schedule.joursCirculation?.includes(englishDayOfWeek);
+
+              return (matchesDirectRoute || matchesServedStations) && runsOnThisDay;
+            }).map(schedule => {
+              // Créer une copie de l'horaire pour l'adapter à l'affichage
+              const adaptedSchedule = { ...schedule };
+
+              // Si la gare de départ est une gare desservie, ajuster les horaires
+              if (arrivalStation !== schedule.departureStation) {
+                const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
+                if (servedStation) {
+                  adaptedSchedule.displayDepartureTime = servedStation.departureTime;
+                  adaptedSchedule.displayDepartureStation = arrivalStation;
+                }
+              } else {
+                adaptedSchedule.displayDepartureTime = schedule.departureTime;
+                adaptedSchedule.displayDepartureStation = schedule.departureStation;
+              }
+
+              // Si la gare d'arrivée est une gare desservie, ajuster les horaires
+              if (departureStation !== schedule.arrivalStation) {
+                const servedStation = schedule.servedStations.find(s => s.name === departureStation);
+                if (servedStation) {
+                  adaptedSchedule.displayArrivalTime = servedStation.arrivalTime;
+                  adaptedSchedule.displayArrivalStation = departureStation;
+                }
+              } else {
+                adaptedSchedule.displayArrivalTime = schedule.arrivalTime;
+                adaptedSchedule.displayArrivalStation = schedule.arrivalStation;
+              }
+
+              return adaptedSchedule;
+            });
+          }
+
+          setSearchResults({
+            aller: {
+              date: departureDate,
+              trains: departureSchedules.sort((a, b) =>
+                a.displayDepartureTime.localeCompare(b.displayDepartureTime)
+              )
+            },
+            retour: returnDate ? {
+              date: returnDate,
+              trains: returnSchedules.sort((a, b) =>
+                a.displayDepartureTime.localeCompare(b.displayDepartureTime)
+              )
+            } : null
+          });
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error fetching schedules:', error);
+          setIsLoading(false);
+        }
+      };
+
+      fetchSchedules();
     }
   }, [router.query]);
 

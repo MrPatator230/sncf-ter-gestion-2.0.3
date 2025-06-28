@@ -6,11 +6,22 @@ export function TrackAssignmentProvider({ children }) {
   const [trackAssignments, setTrackAssignments] = useState({});
 
   useEffect(() => {
-    // Load track assignments from localStorage on mount
-    const savedAssignments = localStorage.getItem('trackAssignments');
-    if (savedAssignments) {
-      setTrackAssignments(JSON.parse(savedAssignments));
-    }
+    // Load track assignments from API on mount
+    const fetchTrackAssignments = async () => {
+      try {
+        const response = await fetch('/api/track-assignments');
+        if (!response.ok) {
+          throw new Error('Failed to fetch track assignments');
+        }
+        const data = await response.json();
+        setTrackAssignments(data);
+      } catch (error) {
+        console.error('Error fetching track assignments:', error);
+        setTrackAssignments({});
+      }
+    };
+
+    fetchTrackAssignments();
   }, []);
 
   const updateTrackAssignment = (scheduleId, station, track) => {

@@ -7,10 +7,10 @@ export default function SuggestionList({ suggestions, selectedIndex, onSelect })
         <div
           key={index}
           className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
-          onClick={() => onSelect(station.name)}
+          onClick={() => onSelect(station)}
         >
           <span className="material-icons">refresh</span>
-          {station.name}
+          {station}
         </div>
       ))}
 

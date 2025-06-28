@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { getAllStations } from '../utils/stationUtils';
 
-export default function StationSearchForm() {
-  const [query, setQuery] = useState('');
+export default function StationSearchForm({ searchQuery, setSearchQuery }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -23,7 +22,7 @@ export default function StationSearchForm() {
 
   const handleInputChange = (e) => {
     const value = e.target.value;
-    setQuery(value);
+    setSearchQuery(value);
 
     if (value.length >= 2) {
       const stations = getAllStations();
@@ -58,13 +57,13 @@ export default function StationSearchForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (query) {
-      router.push(`/horaires-par-gare/${encodeURIComponent(query)}`);
+    if (searchQuery) {
+      router.push(`/horaires-par-gare/${encodeURIComponent(searchQuery)}`);
     }
   };
 
   const handleSuggestionClick = (stationName) => {
-    setQuery(stationName);
+    setSearchQuery(stationName);
     setShowSuggestions(false);
     router.push(`/horaires-par-gare/${encodeURIComponent(stationName)}`);
   };
@@ -84,7 +83,7 @@ export default function StationSearchForm() {
               type="text"
               id="station"
               className="form-control"
-              value={query}
+              value={searchQuery}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Saisissez le nom d'une gare..."

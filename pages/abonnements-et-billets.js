@@ -10,10 +10,21 @@ export default function AbonnementsEtBillets() {
   const router = useRouter();
 
   useEffect(() => {
-    const savedTicketTypes = localStorage.getItem('ticketTypes');
-    if (savedTicketTypes) {
-      setTicketTypes(JSON.parse(savedTicketTypes));
-    }
+    const fetchTicketTypes = async () => {
+      try {
+        const response = await fetch('/api/ticket-types');
+        if (!response.ok) {
+          throw new Error('Failed to fetch ticket types');
+        }
+        const data = await response.json();
+        setTicketTypes(data);
+      } catch (error) {
+        console.error('Error fetching ticket types:', error);
+        setTicketTypes([]);
+      }
+    };
+
+    fetchTicketTypes();
   }, []);
 
   const abonnements = ticketTypes.filter(type => type.category === 'Abonnement');

@@ -12,11 +12,34 @@ export default function GestionHoraires() {
     setLoading(false);
   }, []);
 
-  const handleChange = (id, field, value) => {
+  const handleChange = async (id, field, value) => {
     const updatedSchedule = schedules.find(s => s.id === id);
     if (!updatedSchedule) return;
 
     const newSchedule = { ...updatedSchedule, [field]: value };
+
+    // If the field is 'track', update the track assignment in the database
+    if (field === 'track') {
+      try {
+        const response = await fetch('/api/track-assignments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            scheduleId: id,
+            station: updatedSchedule.departureStation,
+            track: value,
+          }),
+        });
+        if (!response.ok) {
+          console.error('Failed to update track assignment');
+        }
+      } catch (error) {
+        console.error('Error updating track assignment:', error);
+      }
+    }
+
     updateSchedule(id, newSchedule);
 
     setSchedules(prev =>

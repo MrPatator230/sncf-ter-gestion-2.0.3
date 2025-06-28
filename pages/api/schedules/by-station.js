@@ -5,7 +5,28 @@ export default async function handler(req, res) {
   try {
     const query = 'SELECT * FROM schedules';
     const [rows] = await pool.query(query);
-    res.status(200).json(rows);
+
+    // Transform keys from snake_case to camelCase
+    const camelCaseRows = rows.map(row => ({
+      id: row.id,
+      trainNumber: row.train_number,
+      departureStation: row.departure_station,
+      arrivalStation: row.arrival_station,
+      arrivalTime: row.arrival_time,
+      departureTime: row.departure_time,
+      trainType: row.train_type,
+      rollingStockFileName: row.rolling_stock_file_name,
+      composition: row.composition,
+      joursCirculation: row.jours_circulation,
+      servedStations: row.served_stations,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      delayMinutes: row.delay_minutes,
+      isCancelled: row.is_cancelled,
+      trackAssignments: row.track_assignments,
+    }));
+
+    res.status(200).json(camelCaseRows);
   } catch (error) {
     console.error('Error fetching all schedules:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
