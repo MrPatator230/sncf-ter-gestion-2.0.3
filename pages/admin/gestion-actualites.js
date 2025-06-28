@@ -25,15 +25,45 @@ export default function GestionActualites() {
   }, [isAuthenticated, role]);
 
   useEffect(() => {
-    const savedNews = localStorage.getItem('newsPosts');
-    if (savedNews) {
-      setNewsPosts(JSON.parse(savedNews));
+    async function fetchActualites() {
+      try {
+        const res = await fetch('/api/actualites');
+        if (!res.ok) throw new Error('Failed to fetch actualites');
+        const data = await res.json();
+        setNewsPosts(data);
+      } catch (error) {
+        console.error('Error fetching actualites:', error);
+      }
     }
+    fetchActualites();
   }, []);
 
-  const saveNewsPosts = (posts) => {
-    setNewsPosts(posts);
-    localStorage.setItem('newsPosts', JSON.stringify(posts));
+  const saveActualite = async (post) => {
+    try {
+      if (post.id) {
+        // Update existing
+        const res = await fetch(`/api/actualites/${post.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(post),
+        });
+        if (!res.ok) throw new Error('Failed to update actualite');
+        const updatedPost = await res.json();
+        setNewsPosts(newsPosts.map(p => p.id === post.id ? updatedPost : p));
+      } else {
+        // Create new
+        const res = await fetch('/api/actualites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(post),
+        });
+        if (!res.ok) throw new Error('Failed to create actualite');
+        const newPost = await res.json();
+        setNewsPosts([newPost, ...newsPosts]);
+      }
+    } catch (error) {
+      console.error('Error saving actualite:', error);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -53,7 +83,7 @@ export default function GestionActualites() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.content || (!form.date && form.scheduled)) {
       alert('Veuillez remplir tous les champs requis.');
@@ -61,20 +91,13 @@ export default function GestionActualites() {
     }
     const postToSave = {
       ...form,
-      id: editingPost ? editingPost.id : Date.now(),
-      icon: form.icon ? URL.createObjectURL(form.icon) : editingPost ? editingPost.icon : null,
+      icon: form.icon ? URL.createObjectURL(form.icon) : form.icon,
       attachments: form.attachments.length > 0 ? form.attachments.map(file => ({
         name: file.name,
         url: URL.createObjectURL(file),
-      })) : editingPost ? editingPost.attachments : [],
+      })) : [],
     };
-    let updatedPosts;
-    if (editingPost) {
-      updatedPosts = newsPosts.map(post => post.id === editingPost.id ? postToSave : post);
-    } else {
-      updatedPosts = [postToSave, ...newsPosts];
-    }
-    saveNewsPosts(updatedPosts);
+    await saveActualite(postToSave);
     setForm({
       id: null,
       title: '',
@@ -100,10 +123,17 @@ export default function GestionActualites() {
     });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Voulez-vous vraiment supprimer cette actualité ?')) {
-      const updatedPosts = newsPosts.filter(post => post.id !== id);
-      saveNewsPosts(updatedPosts);
+      try {
+        const res = await fetch(`/api/actualites/${id}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete actualite');
+        setNewsPosts(newsPosts.filter(post => post.id !== id));
+      } catch (error) {
+        console.error('Error deleting actualite:', error);
+      }
     }
   };
 

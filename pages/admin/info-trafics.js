@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../../components/Sidebar';
 
 const impactTypeColors = {
@@ -10,8 +10,8 @@ const impactTypeColors = {
 
 export default function InfoTrafics() {
   const [trafficInfos, setTrafficInfos] = useState([]);
-  const [stations, setStations] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [scheduleFolders, setScheduleFolders] = useState([]);
   const [form, setForm] = useState({
     id: null,
     title: '',
@@ -20,21 +20,45 @@ export default function InfoTrafics() {
     description: '',
     impactType: '',
     impactedTrains: [],
+    impactedFolder: null,
   });
   const [trainSearch, setTrainSearch] = useState('');
   const [filteredTrains, setFilteredTrains] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    const savedTrafficInfos = localStorage.getItem('trafficInfos');
-    if (savedTrafficInfos) {
-      setTrafficInfos(JSON.parse(savedTrafficInfos));
-    }
-    const savedSchedules = localStorage.getItem('schedules');
-    if (savedSchedules) {
-      setSchedules(JSON.parse(savedSchedules));
-      setFilteredTrains(JSON.parse(savedSchedules));
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const [infosRes, schedulesRes, foldersRes] = await Promise.all([
+        fetch('/api/infos-trafic'),
+        fetch('/api/schedules'),
+        fetch('/api/schedule-folders'),
+      ]);
+      if (!infosRes.ok) throw new Error('Failed to fetch infos trafic');
+      if (!schedulesRes.ok) throw new Error('Failed to fetch schedules');
+      if (!foldersRes.ok) throw new Error('Failed to fetch schedule folders');
+
+      const infosData = await infosRes.json();
+      const schedulesData = await schedulesRes.json();
+      const foldersData = await foldersRes.json();
+
+      setTrafficInfos(infosData);
+      setSchedules(schedulesData);
+      setScheduleFolders(foldersData);
+      setFilteredTrains(schedulesData);
+    } catch (error) {
+      setErrorMsg(error.message);
+    } finally {
+      setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (trainSearch.trim() === '') {
@@ -47,13 +71,58 @@ export default function InfoTrafics() {
     }
   }, [trainSearch, schedules]);
 
-  const saveTrafficInfos = (infos) => {
-    localStorage.setItem('trafficInfos', JSON.stringify(infos));
+  const saveInfo = async (info) => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      if (info.id) {
+        if (info.impactedFolder) {
+          const folderSchedules = schedules.filter(s => s.folder_id === info.impactedFolder);
+          info.impactedTrains = folderSchedules.map(s => s.trainNumber);
+        }
+        const res = await fetch(`/api/infos-trafic/${info.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(info),
+        });
+        if (!res.ok) throw new Error('Failed to update info trafic');
+        setSuccessMsg('Info trafic mise à jour avec succès.');
+        const updatedInfo = await res.json();
+        setTrafficInfos(trafficInfos.map(i => i.id === info.id ? updatedInfo : i));
+      } else {
+        if (info.impactedFolder) {
+          const folderSchedules = schedules.filter(s => s.folder_id === info.impactedFolder);
+          info.impactedTrains = folderSchedules.map(s => s.trainNumber);
+        }
+        const res = await fetch('/api/infos-trafic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(info),
+        });
+        if (!res.ok) throw new Error('Failed to create info trafic');
+        setSuccessMsg('Info trafic créée avec succès.');
+        const newInfo = await res.json();
+        setTrafficInfos([newInfo, ...trafficInfos]);
+      }
+    } catch (error) {
+      setErrorMsg(error.message);
+    }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFolderChange = (e) => {
+    const folderId = e.target.value ? parseInt(e.target.value) : null;
+    setForm(prev => ({ ...prev, impactedFolder: folderId }));
+    if (folderId) {
+      const folderSchedules = schedules.filter(s => s.folder_id === folderId);
+      setFilteredTrains(folderSchedules);
+    } else {
+      setFilteredTrains(schedules);
+    }
   };
 
   const toggleTrainSelection = (trainNumber) => {
@@ -65,23 +134,13 @@ export default function InfoTrafics() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.description || !form.impactType) {
-      alert('Veuillez remplir les champs obligatoires : Titre, Description, Type d\'impact.');
+      setErrorMsg('Veuillez remplir les champs obligatoires : Titre, Description, Type d\'impact.');
       return;
     }
-    let newTrafficInfos;
-    if (form.id === null) {
-      // Create new
-      const newInfo = { ...form, id: Date.now() };
-      newTrafficInfos = [...trafficInfos, newInfo];
-    } else {
-      // Update existing
-      newTrafficInfos = trafficInfos.map(info => (info.id === form.id ? form : info));
-    }
-    setTrafficInfos(newTrafficInfos);
-    saveTrafficInfos(newTrafficInfos);
+    await saveInfo(form);
     setForm({
       id: null,
       title: '',
@@ -90,6 +149,7 @@ export default function InfoTrafics() {
       description: '',
       impactType: '',
       impactedTrains: [],
+      impactedFolder: null,
     });
     setTrainSearch('');
   };
@@ -98,14 +158,29 @@ export default function InfoTrafics() {
     const info = trafficInfos.find(info => info.id === id);
     if (info) {
       setForm(info);
+      if (info.impactedFolder) {
+        const folderSchedules = schedules.filter(s => s.folder_id === info.impactedFolder);
+        setFilteredTrains(folderSchedules);
+      } else {
+        setFilteredTrains(schedules);
+      }
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Voulez-vous vraiment supprimer cette info trafic ?')) {
-      const newTrafficInfos = trafficInfos.filter(info => info.id !== id);
-      setTrafficInfos(newTrafficInfos);
-      saveTrafficInfos(newTrafficInfos);
+      setErrorMsg('');
+      setSuccessMsg('');
+      try {
+        const res = await fetch(`/api/infos-trafic/${id}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete info trafic');
+        setSuccessMsg('Info trafic supprimée avec succès.');
+        setTrafficInfos(trafficInfos.filter(info => info.id !== id));
+      } catch (error) {
+        setErrorMsg(error.message);
+      }
     }
   };
 
@@ -115,7 +190,12 @@ export default function InfoTrafics() {
       <div id="content-wrapper" className="d-flex flex-column flex-grow-1">
         <div id="content" className="container my-5 flex-grow-1">
           <h1 className="mb-4 text-center">Gestion des Infos Trafic</h1>
-          <form onSubmit={handleSubmit} className="mb-5">
+
+          {loading && <div className="alert alert-info">Chargement des données...</div>}
+          {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
+          {successMsg && <div className="alert alert-success">{successMsg}</div>}
+
+          <form onSubmit={handleSubmit} className="mb-5" noValidate>
             <div className="mb-3">
               <label htmlFor="title" className="form-label">Titre *</label>
               <input
@@ -126,6 +206,7 @@ export default function InfoTrafics() {
                 value={form.title}
                 onChange={handleInputChange}
                 required
+                aria-required="true"
               />
             </div>
             <div className="mb-3 d-flex gap-3">
@@ -162,6 +243,7 @@ export default function InfoTrafics() {
                 value={form.description}
                 onChange={handleInputChange}
                 required
+                aria-required="true"
               />
             </div>
             <div className="mb-3">
@@ -173,12 +255,28 @@ export default function InfoTrafics() {
                 value={form.impactType}
                 onChange={handleInputChange}
                 required
+                aria-required="true"
               >
                 <option value="">-- Sélectionnez un type --</option>
                 <option value="Retard">Retard</option>
                 <option value="Suppression">Suppression</option>
                 <option value="Modification">Modification</option>
                 <option value="Information">Information</option>
+              </select>
+            </div>
+            <div className="mb-3">
+              <label htmlFor="folderSelect" className="form-label">Appliquer à un dossier d'horaires</label>
+              <select
+                id="folderSelect"
+                name="folderSelect"
+                className="form-select"
+                value={form.impactedFolder || ''}
+                onChange={handleFolderChange}
+              >
+                <option value="">-- Aucun dossier sélectionné --</option>
+                {scheduleFolders.map(folder => (
+                  <option key={folder.id} value={folder.id}>{folder.name}</option>
+                ))}
               </select>
             </div>
             <div className="mb-3">
@@ -209,7 +307,9 @@ export default function InfoTrafics() {
                 ))}
               </div>
             </div>
-            <button type="submit" className="btn btn-primary">{form.id === null ? 'Créer' : 'Mettre à jour'}</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {form.id === null ? 'Créer' : 'Mettre à jour'}
+            </button>
           </form>
 
           <h2 className="mb-3">Infos Trafic existantes</h2>

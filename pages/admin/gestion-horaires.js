@@ -20,20 +20,14 @@ export default function GestionHoraires() {
     }
     async function fetchSchedules() {
       try {
-        console.log('Fetching schedules and status data...');
-        const [schedulesRes, statusRes] = await Promise.all([
-          fetch('/api/schedules'),
-          fetch('/api/gestion-horaires'),
-        ]);
+        console.log('Fetching schedules data...');
+        const schedulesRes = await fetch('/api/schedules');
         if (!schedulesRes.ok) throw new Error('Failed to fetch schedules');
-        if (!statusRes.ok) throw new Error('Failed to fetch gestion horaires');
         const schedulesData = await schedulesRes.json();
-        const statusData = await statusRes.json();
         console.log('Schedules data:', schedulesData);
-        console.log('Status data:', statusData);
 
         // Convert snake_case keys to camelCase for each schedule
-        const camelCaseSchedules = schedulesData.map(schedule => ({
+        const mergedSchedules = schedulesData.map(schedule => ({
           id: schedule.id,
           trainNumber: schedule.train_number,
           departureStation: schedule.departure_station,
@@ -47,31 +41,11 @@ export default function GestionHoraires() {
           servedStations: schedule.served_stations,
           createdAt: schedule.created_at,
           updatedAt: schedule.updated_at,
-          delayMinutes: 0,
-          isCancelled: false,
-          trackAssignments: {},
+          delayMinutes: schedule.delay_minutes || 0,
+          isCancelled: schedule.is_cancelled || false,
+          trackAssignments: schedule.track_assignments || {},
         }));
-
-        // Map status data by schedule_id
-        const statusMap = {};
-        statusData.forEach(status => {
-          statusMap[status.schedule_id] = status;
-        });
-
-        // Merge status data into schedules
-        const mergedSchedules = camelCaseSchedules.map(schedule => {
-          const status = statusMap[schedule.id];
-          if (status) {
-            return {
-              ...schedule,
-              delayMinutes: status.delay_minutes,
-              isCancelled: status.is_cancelled,
-              trackAssignments: status.track_assignments || {},
-            };
-          }
-          return schedule;
-        });
-
+        
         setSchedules(mergedSchedules);
 
         // Initialize track assignments from schedules if available
@@ -108,22 +82,25 @@ export default function GestionHoraires() {
 
     if (field === 'delayMinutes' || field === 'isCancelled' || field === null) {
       let newSchedule;
+      let payload;
+
       if (field === null && typeof value === 'object') {
         newSchedule = { ...schedule, ...value };
+        payload = {
+          delayMinutes: newSchedule.delayMinutes,
+          isCancelled: newSchedule.isCancelled,
+        };
       } else {
         newSchedule = { ...schedule, [field]: value };
+        payload = { [field]: value };
       }
+
       try {
-        // Update schedule status in gestion_horaires table
-        const res = await fetch('/api/gestion-horaires', {
-          method: 'POST',
+        // Update schedule status in schedules table
+        const res = await fetch(`/api/schedules/${scheduleId}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            schedule_id: scheduleId,
-            delay_minutes: newSchedule.delayMinutes,
-            is_cancelled: newSchedule.isCancelled,
-            track_assignments: trackAssignments[scheduleId] || {},
-          }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error('Failed to update schedule status');
 
@@ -158,7 +135,25 @@ export default function GestionHoraires() {
       const res = await fetch('/api/schedules');
       if (!res.ok) throw new Error('Failed to fetch schedules');
       const data = await res.json();
-      setSchedules(data);
+      const mappedData = data.map(schedule => ({
+        id: schedule.id,
+        trainNumber: schedule.train_number,
+        departureStation: schedule.departure_station,
+        arrivalStation: schedule.arrival_station,
+        arrivalTime: schedule.arrival_time,
+        departureTime: schedule.departure_time,
+        trainType: schedule.train_type,
+        rollingStockFileName: schedule.rolling_stock_file_name,
+        composition: schedule.composition,
+        joursCirculation: schedule.jours_circulation,
+        servedStations: schedule.served_stations,
+        createdAt: schedule.created_at,
+        updatedAt: schedule.updated_at,
+        delayMinutes: schedule.delay_minutes || 0,
+        isCancelled: schedule.is_cancelled || false,
+        trackAssignments: schedule.track_assignments || {},
+      }));
+      setSchedules(mappedData);
       setMessage({ type: 'success', text: 'Retards et suppressions remis à zéro.' });
     } catch (error) {
       console.error(error);
@@ -170,13 +165,19 @@ export default function GestionHoraires() {
     setSending(true);
     setMessage(null);
     try {
-      // Assuming an API endpoint to update track assignments in bulk
-      const res = await fetch('/api/updateTrackAssignments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(trackAssignments),
+      const updatePromises = Object.keys(trackAssignments).map(scheduleId => {
+        return fetch(`/api/schedules/${scheduleId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackAssignments: trackAssignments[scheduleId] }),
+        });
       });
-      if (!res.ok) throw new Error('Erreur lors de la mise à jour des quais');
+
+      const results = await Promise.all(updatePromises);
+      const allOk = results.every(res => res.ok);
+
+      if (!allOk) throw new Error('Erreur lors de la mise à jour des quais');
+
       setMessage({ type: 'success', text: 'Attributions des quais envoyées avec succès.' });
     } catch (error) {
       setMessage({ type: 'error', text: error.message });
@@ -246,7 +247,7 @@ export default function GestionHoraires() {
                     checked={schedule.isCancelled || false}
                     onChange={e => {
                       const checked = e.target.checked;
-                      handleChange(schedule.id, null, { isCancelled: checked, delayMinutes: checked ? 0 : undefined });
+                      handleChange(schedule.id, null, { isCancelled: checked, delayMinutes: checked ? 0 : schedule.delayMinutes });
                     }}
                     aria-label={`Supprimé pour le train ${schedule.trainNumber}`}
                   />

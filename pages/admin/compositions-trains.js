@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useContext } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -7,13 +6,11 @@ import DraggableRollingStock from '../../components/admin/DraggableRollingStock'
 import CompositionDropZone from '../../components/admin/CompositionDropZone';
 import TrainVisualSlider from '../../components/TrainVisualSlider';
 import { SettingsContext } from '../../contexts/SettingsContext';
-import { extractStationsFromSchedule } from '../../utils/stationUtils';
 
 export default function CompositionsTrains() {
   const { primaryColor, buttonStyle } = useContext(SettingsContext);
   const [schedules, setSchedules] = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [computedStations, setComputedStations] = useState([]);
   const [materielsRoulants, setMaterielsRoulants] = useState([]);
   const [composition, setComposition] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,29 +22,32 @@ export default function CompositionsTrains() {
   const [imageFile, setImageFile] = useState(null);
   const [showTrainVisual, setShowTrainVisual] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [schedulesRes, materielsRes] = await Promise.all([
-          fetch('/api/schedules'),
-          fetch('/api/materiels-roulants'),
-        ]);
+  async function fetchMaterielsRoulants() {
+    try {
+      const materielsRes = await fetch('/api/materiels-roulants');
+      if (materielsRes.ok) {
+        const materielsData = await materielsRes.json();
+        setMaterielsRoulants(materielsData);
+      }
+    } catch (error) {
+      console.error('Error loading materiels roulants:', error);
+    }
+  }
 
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        const schedulesRes = await fetch('/api/schedules');
         if (schedulesRes.ok) {
           const schedulesData = await schedulesRes.json();
           setSchedules(schedulesData);
         }
-
-        if (materielsRes.ok) {
-          const materielsData = await materielsRes.json();
-          setMaterielsRoulants(materielsData);
-        }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error loading schedules:', error);
       }
+      fetchMaterielsRoulants();
     }
-
-    fetchData();
+    fetchInitialData();
   }, []);
 
   const handleTrainNumberSubmit = async (e) => {
@@ -58,14 +58,12 @@ export default function CompositionsTrains() {
         setError('Numéro de train non trouvé');
         setSelectedSchedule(null);
         setComposition([]);
-        setComputedStations([]);
         setShowTrainVisual(false);
         return;
       }
       const schedule = await res.json();
       setSelectedSchedule(schedule);
       setComposition(schedule?.composition || []);
-      setComputedStations(extractStationsFromSchedule(schedule));
       setError('');
       setShowTrainVisual(false);
     } catch (error) {
@@ -73,7 +71,6 @@ export default function CompositionsTrains() {
       setError('Erreur lors de la recherche du numéro de train');
       setSelectedSchedule(null);
       setComposition([]);
-      setComputedStations([]);
       setShowTrainVisual(false);
     }
   };
@@ -94,27 +91,24 @@ export default function CompositionsTrains() {
     }
 
     try {
-      // Defensive check for required fields
-      if (!selectedSchedule.trainNumber || !selectedSchedule.departureStation || !selectedSchedule.arrivalStation ||
-          !selectedSchedule.arrivalTime || !selectedSchedule.departureTime || !selectedSchedule.trainType) {
+      if (!selectedSchedule.train_number || !selectedSchedule.departure_station || !selectedSchedule.arrival_station ||
+          !selectedSchedule.arrival_time || !selectedSchedule.departure_time || !selectedSchedule.train_type) {
         alert('Les informations de l\'horaire sont incomplètes. Veuillez vérifier les données.');
         return;
       }
 
       const payload = {
-        trainNumber: selectedSchedule.trainNumber,
-        departureStation: selectedSchedule.departureStation,
-        arrivalStation: selectedSchedule.arrivalStation,
-        arrivalTime: selectedSchedule.arrivalTime,
-        departureTime: selectedSchedule.departureTime,
-        trainType: selectedSchedule.trainType,
+        trainNumber: selectedSchedule.train_number,
+        departureStation: selectedSchedule.departure_station,
+        arrivalStation: selectedSchedule.arrival_station,
+        arrivalTime: selectedSchedule.arrival_time,
+        departureTime: selectedSchedule.departure_time,
+        trainType: selectedSchedule.train_type,
         rollingStockFileName: composition.length > 0 ? composition[0].name : null,
         composition: composition,
-        joursCirculation: selectedSchedule.joursCirculation || [],
-        servedStations: selectedSchedule.servedStations || [],
+        joursCirculation: selectedSchedule.jours_circulation || [],
+        servedStations: selectedSchedule.served_stations || [],
       };
-
-      console.log('Saving schedule with payload:', payload);
 
       const response = await fetch(`/api/schedules/${selectedSchedule.id}`, {
         method: 'PUT',
@@ -123,13 +117,15 @@ export default function CompositionsTrains() {
       });
 
       if (!response.ok) {
-        alert('Erreur lors de la mise à jour de la composition');
+        const errorData = await response.json();
+        alert(`Erreur lors de la mise à jour de la composition: ${errorData.error}`);
         return;
       }
 
-      const updatedSchedule = await response.json();
+      const updatedScheduleRes = await fetch(`/api/schedules/by-train-number?trainNumber=${encodeURIComponent(selectedSchedule.train_number)}`);
+      const updatedSchedule = await updatedScheduleRes.json();
 
-      // Update local state
+
       const updatedSchedules = schedules.map(schedule =>
         schedule.id === updatedSchedule.id ? updatedSchedule : schedule
       );
@@ -150,54 +146,62 @@ export default function CompositionsTrains() {
 
   const handleMaterielSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !type.trim() || (editingMaterielId === null && !imageFile)) {
-      alert('Veuillez remplir tous les champs et ajouter une image.');
-      return;
+    if (!name.trim() || !type.trim()) {
+        alert('Veuillez remplir le nom et le type.');
+        return;
+    }
+    if (editingMaterielId === null && !imageFile) {
+        alert('Veuillez ajouter une image pour un nouveau matériel.');
+        return;
     }
 
-    const processSave = (imageData) => {
-      let updatedMateriels;
-      if (editingMaterielId !== null) {
-        updatedMateriels = materielsRoulants.map(m => {
-          if (m.id === editingMaterielId) {
-            return {
-              ...m,
-              name: name.trim(),
-              type: type.trim(),
-              imageData: imageData || m.imageData,
-              imageName: `${name.toLowerCase().replace(/\s+/g, '-')}.png`
-            };
-          }
-          return m;
-        });
-      } else {
-        const newMateriel = {
-          id: Date.now(),
-          name: name.trim(),
-          type: type.trim(),
-          imageData,
-          imageName: `${name.toLowerCase().replace(/\s+/g, '-')}.png`
+    const processSubmit = async (imageData) => {
+        const payload = {
+            name: name.trim(),
+            type: type.trim(),
+            imageData: imageData,
         };
-        updatedMateriels = [...materielsRoulants, newMateriel];
-      }
-      
-      localStorage.setItem('materielsRoulants', JSON.stringify(updatedMateriels));
-      setMaterielsRoulants(updatedMateriels);
-      setEditingMaterielId(null);
-      setName('');
-      setType('');
-      setImageFile(null);
-      e.target.reset();
+
+        try {
+            const url = editingMaterielId 
+                ? `/api/materiels-roulants/${editingMaterielId}`
+                : '/api/materiels-roulants';
+            
+            const method = editingMaterielId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || `Failed to save rolling stock`);
+            }
+
+            await fetchMaterielsRoulants();
+
+            setEditingMaterielId(null);
+            setName('');
+            setType('');
+            setImageFile(null);
+            e.target.reset();
+
+        } catch (error) {
+            console.error(error);
+            alert(`Error saving rolling stock: ${error.message}`);
+        }
     };
 
     if (imageFile) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        processSave(reader.result);
-      };
-      reader.readAsDataURL(imageFile);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            processSubmit(reader.result);
+        };
+        reader.readAsDataURL(imageFile);
     } else {
-      processSave(null);
+        processSubmit(null);
     }
   };
 
@@ -208,16 +212,29 @@ export default function CompositionsTrains() {
     setImageFile(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce matériel roulant ?')) {
-      const newMateriels = materielsRoulants.filter(m => m.id !== id);
-      localStorage.setItem('materielsRoulants', JSON.stringify(newMateriels));
-      setMaterielsRoulants(newMateriels);
-      if (editingMaterielId === id) {
-        setEditingMaterielId(null);
-        setName('');
-        setType('');
-        setImageFile(null);
+      try {
+        const response = await fetch(`/api/materiels-roulants/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Failed to delete rolling stock');
+        }
+
+        await fetchMaterielsRoulants();
+
+        if (editingMaterielId === id) {
+          setEditingMaterielId(null);
+          setName('');
+          setType('');
+          setImageFile(null);
+        }
+      } catch (error) {
+        console.error(error);
+        alert(`Error deleting rolling stock: ${error.message}`);
       }
     }
   };
@@ -245,7 +262,6 @@ export default function CompositionsTrains() {
 
             <div className="row">
               <div className="col-lg-8">
-                {/* Train Number Search */}
               <div className="card shadow-sm mb-4">
                 <div className="card-body">
                   <form onSubmit={handleTrainNumberSubmit} className="row g-3 align-items-end">
@@ -280,26 +296,24 @@ export default function CompositionsTrains() {
 
               {selectedSchedule && (
                 <>
-                  {/* Train Visual */}
                   {showTrainVisual && (
                     <div className="card shadow-sm mb-4">
                       <div className="card-body">
                         <h2 className="h5 mb-4" style={{ color: primaryColor }}>
-                          Visualisation du Train {selectedSchedule.trainNumber}
+                          Visualisation du Train {selectedSchedule.train_number}
                         </h2>
                         <TrainVisualSlider
-                          trainNumber={selectedSchedule.trainNumber}
+                          trainNumber={selectedSchedule.train_number}
                           composition={composition}
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* Composition Management */}
                   <div className="card shadow-sm mb-4">
                     <div className="card-body">
                       <h2 className="h5 mb-4" style={{ color: primaryColor }}>
-                        Composition du Train {selectedSchedule.trainNumber}
+                        Composition du Train {selectedSchedule.train_number}
                       </h2>
                       <CompositionDropZone
                         onDrop={handleDrop}
@@ -321,13 +335,73 @@ export default function CompositionsTrains() {
                 </>
               )}
 
-              {/* Matériel Roulant Management */}
               <div className="card shadow-sm mb-4">
                 <div className="card-body">
                   <h2 className="h5 mb-4" style={{ color: primaryColor }}>
                     Gestion du Matériel Roulant
                   </h2>
                   
+                   <form onSubmit={handleMaterielSubmit} className="mb-4">
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label">Nom</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Nom du matériel"
+                          style={{ borderRadius: getBorderRadius() }}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Type</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={type}
+                          onChange={(e) => setType(e.target.value)}
+                          placeholder="Type (ex: Automotrice)"
+                          style={{ borderRadius: getBorderRadius() }}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label">Image</label>
+                        <input
+                          type="file"
+                          className="form-control"
+                          onChange={handleFileChange}
+                          style={{ borderRadius: getBorderRadius() }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn mt-3"
+                      style={{
+                        backgroundColor: primaryColor,
+                        color: 'white',
+                        borderRadius: getBorderRadius()
+                      }}
+                    >
+                      {editingMaterielId ? 'Mettre à jour' : 'Ajouter'}
+                    </button>
+                    {editingMaterielId && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary mt-3 ms-2"
+                        onClick={() => {
+                          setEditingMaterielId(null);
+                          setName('');
+                          setType('');
+                          setImageFile(null);
+                        }}
+                        style={{ borderRadius: getBorderRadius() }}
+                      >
+                        Annuler
+                      </button>
+                    )}
+                  </form>
 
                   <div className="mb-3">
                     <input
@@ -349,7 +423,7 @@ export default function CompositionsTrains() {
                       .map(materiel => (
                         <div key={materiel.id} className="col-md-6">
                           <DraggableRollingStock 
-                            item={materiel}
+                            item={{...materiel, imageData: materiel.image_data}}
                             onEdit={() => handleEdit(materiel)}
                             onDelete={() => handleDelete(materiel.id)}
                           />
@@ -373,23 +447,24 @@ export default function CompositionsTrains() {
                       <>
                         <div className="timeline-item">
                           <div className="timeline-content">
-                            <strong style={{ color: primaryColor }}>{selectedSchedule.departureStation}</strong>
+                            <strong style={{ color: primaryColor }}>{selectedSchedule.departure_station}</strong>
+                            <div>Départ: {selectedSchedule.departure_time}</div>
                           </div>
                         </div>
-                        {selectedSchedule.servedStations && selectedSchedule.servedStations.length > 0 ? (
-                          selectedSchedule.servedStations.map((station, index) => (
+                        {selectedSchedule.served_stations && selectedSchedule.served_stations.length > 0 ? (
+                          selectedSchedule.served_stations.map((station, index) => (
                             <div key={index} className="timeline-item">
                               <div className="timeline-content">
                                 <strong style={{ color: primaryColor }}>{station.name}</strong>
-                                <div>Arrivée: {station.arrival_time || '-'}</div>
-                                <div>Départ: {station.departure_time || '-'}</div>
+                                <div>Départ: {station.departureTime || '-'}</div>
                               </div>
                             </div>
                           ))
                         ) : null}
                         <div className="timeline-item">
                           <div className="timeline-content">
-                            <strong style={{ color: primaryColor }}>{selectedSchedule.arrivalStation}</strong>
+                            <strong style={{ color: primaryColor }}>{selectedSchedule.arrival_station}</strong>
+                            <div>Arrivée: {selectedSchedule.arrival_time}</div>
                           </div>
                         </div>
                       </>

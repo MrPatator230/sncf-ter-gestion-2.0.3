@@ -85,6 +85,9 @@ CREATE TABLE schedules (
   composition JSON,
   jours_circulation JSON,
   served_stations JSON,
+  delay_minutes INT DEFAULT 0,
+  is_cancelled BOOLEAN DEFAULT FALSE,
+  track_assignments JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -107,15 +110,4 @@ CREATE TABLE login (
   phone VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-CREATE TABLE gestion_horaires (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  schedule_id INT NOT NULL,
-  delay_minutes INT DEFAULT 0,
-  is_cancelled BOOLEAN DEFAULT FALSE,
-  track_assignments JSON,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE
 );
