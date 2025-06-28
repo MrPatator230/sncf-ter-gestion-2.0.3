@@ -23,15 +23,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin/gestion-horaires": [
+    "/horaires-par-gare": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/gestion-horaires.js"
+      "static/chunks/pages/horaires-par-gare.js"
     ],
-    "/admin/info-trafics": [
+    "/horaires-par-gare/[station]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/info-trafics.js"
+      "static/chunks/pages/horaires-par-gare/[station].js"
     ]
   },
   "ampFirstPages": []

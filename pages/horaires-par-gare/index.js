@@ -1,7 +1,32 @@
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Layout from '../../components/Layout';
 import StationSearchForm from '../../components/StationSearchForm';
 
 export default function HorairesParGare() {
+  const [stations, setStations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        const response = await fetch('/api/stations');
+        if (!response.ok) {
+          throw new Error('Failed to fetch stations');
+        }
+        const data = await response.json();
+        setStations(data);
+      } catch (error) {
+        console.error('Error fetching stations:', error);
+        setStations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStations();
+  }, []);
+
   return (
     <Layout>
       <div className="container-fluid">
@@ -28,6 +53,29 @@ export default function HorairesParGare() {
                   </p>
                 </div>
                 <StationSearchForm />
+              </div>
+            </div>
+
+            <div className="card border-0 shadow-sm mt-4">
+              <div className="card-header bg-light">
+                <h2 className="h5 mb-0">Gares disponibles</h2>
+              </div>
+              <div className="card-body">
+                {loading ? (
+                  <div>Chargement des gares...</div>
+                ) : stations.length === 0 ? (
+                  <div>Aucune gare trouvée.</div>
+                ) : (
+                  <ul className="list-unstyled">
+                    {stations.map((station) => (
+                      <li key={station.name}>
+                        <Link legacyBehavior href={`/horaires-par-gare/${encodeURIComponent(station.name)}`}>
+                          <a>{station.name}</a>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 
@@ -105,6 +153,16 @@ export default function HorairesParGare() {
 
         .list-unstyled li {
           color: #495057;
+          margin-bottom: 0.5rem;
+        }
+
+        .list-unstyled li a {
+          color: #007bff;
+          text-decoration: none;
+        }
+
+        .list-unstyled li a:hover {
+          text-decoration: underline;
         }
 
         .list-unstyled i {

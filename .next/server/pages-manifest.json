@@ -2,7 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin/info-trafics": "pages/admin/info-trafics.js",
-  "/admin/gestion-horaires": "pages/admin/gestion-horaires.js",
-  "/admin/gestion-actualites": "pages/admin/gestion-actualites.js"
+  "/horaires-par-gare/[station]": "pages/horaires-par-gare/[station].js",
+  "/horaires-par-gare": "pages/horaires-par-gare.js",
+  "/api/schedules/by-station": "pages/api/schedules/by-station.js",
+  "/admin/horaires": "pages/admin/horaires.js"
 }
