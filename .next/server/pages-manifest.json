@@ -2,12 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin": "pages/admin.js",
-  "/admin/gestion-actualites": "pages/admin/gestion-actualites.js",
   "/admin/info-trafics": "pages/admin/info-trafics.js",
-  "/api/entreprise": "pages/api/entreprise.js",
-  "/api/infos-trafic": "pages/api/infos-trafic.js",
   "/admin/gestion-horaires": "pages/admin/gestion-horaires.js",
-  "/api/schedule-folders": "pages/api/schedule-folders.js",
-  "/api/schedules": "pages/api/schedules.js"
+  "/admin/gestion-actualites": "pages/admin/gestion-actualites.js"
 }

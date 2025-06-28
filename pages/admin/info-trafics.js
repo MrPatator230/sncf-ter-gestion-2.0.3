@@ -157,6 +157,10 @@ export default function InfoTrafics() {
   const handleEdit = (id) => {
     const info = trafficInfos.find(info => info.id === id);
     if (info) {
+      // Ensure impactedTrains is always an array to avoid undefined length error
+      if (!info.impactedTrains) {
+        info.impactedTrains = [];
+      }
       setForm(info);
       if (info.impactedFolder) {
         const folderSchedules = schedules.filter(s => s.folder_id === info.impactedFolder);
@@ -340,7 +344,7 @@ export default function InfoTrafics() {
                         </span>
                       </td>
                       <td>
-                        {info.impactedTrains.length === 0 ? '-' : info.impactedTrains.join(', ')}
+                      {!info.impactedTrains || info.impactedTrains.length === 0 ? '-' : info.impactedTrains.join(', ')}
                       </td>
                       <td>
                         <button className="btn btn-sm btn-warning me-2" onClick={() => handleEdit(info.id)}>Modifier</button>
