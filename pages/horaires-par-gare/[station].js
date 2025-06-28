@@ -6,102 +6,128 @@ export default function StationSchedule() {
   const router = useRouter();
   const { station } = router.query;
 
-  const [scheduleType, setScheduleType] = useState('departures');
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [departures, setDepartures] = useState([]);
+  const [arrivals, setArrivals] = useState([]);
+  const [loadingDepartures, setLoadingDepartures] = useState(false);
+  const [loadingArrivals, setLoadingArrivals] = useState(false);
+  const [errorDepartures, setErrorDepartures] = useState(null);
+  const [errorArrivals, setErrorArrivals] = useState(null);
 
   useEffect(() => {
     const fetchSchedules = async () => {
       if (!station) return;
-      setLoading(true);
-      setError(null);
+      setLoadingDepartures(true);
+      setErrorDepartures(null);
+      setLoadingArrivals(true);
+      setErrorArrivals(null);
       try {
-        const response = await fetch(`/api/schedules/by-station?station=${encodeURIComponent(station)}`);
+        const response = await fetch(`/api/schedules/by-station`);
         if (!response.ok) {
           throw new Error('Failed to fetch schedules');
         }
         const data = await response.json();
-        setSchedules(data);
+        // Filter departures and arrivals client-side
+        setDepartures(data.filter(schedule => schedule.departureStation === station));
+        setArrivals(data.filter(schedule => schedule.arrivalStation === station));
       } catch (err) {
-        setError(err.message);
-        setSchedules([]);
+        setErrorDepartures(err.message);
+        setErrorArrivals(err.message);
+        setDepartures([]);
+        setArrivals([]);
       } finally {
-        setLoading(false);
+        setLoadingDepartures(false);
+        setLoadingArrivals(false);
       }
     };
 
     fetchSchedules();
   }, [station]);
 
-  const filteredSchedules = schedules.filter(schedule => {
-    if (scheduleType === 'departures') {
-      return schedule.departureStation === station || (schedule.servedStations && schedule.servedStations.some(s => s.name === station && s.departureTime));
-    } else {
-      return schedule.arrivalStation === station || (schedule.servedStations && schedule.servedStations.some(s => s.name === station && s.arrivalTime));
-    }
-  });
-
   return (
     <Layout>
       <div className="container py-4">
         <h1>Horaires pour la gare: {station}</h1>
 
-        <div className="btn-group mb-3">
-          <button
-            className={`btn btn-${scheduleType === 'departures' ? 'primary' : 'secondary'}`}
-            onClick={() => setScheduleType('departures')}
-          >
-            Départs
-          </button>
-          <button
-            className={`btn btn-${scheduleType === 'arrivals' ? 'primary' : 'secondary'}`}
-            onClick={() => setScheduleType('arrivals')}
-          >
-            Arrivées
-          </button>
-        </div>
+        {loadingDepartures && <p>Chargement des départs...</p>}
+        {errorDepartures && <p className="text-danger">Erreur départs: {errorDepartures}</p>}
 
-        {loading && <p>Chargement des horaires...</p>}
-        {error && <p className="text-danger">Erreur: {error}</p>}
-
-        {!loading && !error && filteredSchedules.length === 0 && (
-          <p>Aucun horaire trouvé pour cette gare et ce type.</p>
+        {!loadingDepartures && !errorDepartures && departures.length === 0 && (
+          <p>Aucun départ trouvé pour cette gare.</p>
         )}
 
-        {!loading && !error && filteredSchedules.length > 0 && (
-          <table className="table table-striped">
-            <thead>
-              <tr>
-                <th>Heure</th>
-                <th>Train</th>
-                <th>Destination</th>
-                <th>Voie</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSchedules.map(schedule => {
-                const time = scheduleType === 'departures'
-                  ? (schedule.departureStation === station ? schedule.departureTime : schedule.servedStations?.find(s => s.name === station)?.departureTime)
-                  : (schedule.arrivalStation === station ? schedule.arrivalTime : schedule.servedStations?.find(s => s.name === station)?.arrivalTime);
+        {!loadingDepartures && !errorDepartures && departures.length > 0 && (
+          <>
+            <h2>Départs</h2>
+            <table className="table table-striped mb-4">
+              <thead>
+                <tr>
+                  <th>Heure</th>
+                  <th>Train</th>
+                  <th>Destination</th>
+                  <th>Voie</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departures.map(schedule => {
+                  const time = schedule.departureTime;
+                  const destination = schedule.arrivalStation;
+                  const status = schedule.isCancelled ? 'Supprimé' : (schedule.delayMinutes ? `Retard ${schedule.delayMinutes} min` : 'À l\'heure');
 
-                const destination = scheduleType === 'departures' ? schedule.arrivalStation : schedule.departureStation;
+                  return (
+                    <tr key={schedule.id}>
+                      <td>{time || '-'}</td>
+                      <td>{schedule.trainNumber}</td>
+                      <td>{destination}</td>
+                      <td>{schedule.track || '-'}</td>
+                      <td>{status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
 
-                const status = schedule.isCancelled ? 'Supprimé' : (schedule.delayMinutes ? `Retard ${schedule.delayMinutes} min` : 'À l\'heure');
+        {loadingArrivals && <p>Chargement des arrivées...</p>}
+        {errorArrivals && <p className="text-danger">Erreur arrivées: {errorArrivals}</p>}
 
-                return (
-                  <tr key={schedule.id}>
-                    <td>{time || '-'}</td>
-                    <td>{schedule.trainNumber}</td>
-                    <td>{destination}</td>
-                    <td>{schedule.track || '-'}</td>
-                    <td>{status}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {!loadingArrivals && !errorArrivals && arrivals.length === 0 && (
+          <p>Aucune arrivée trouvée pour cette gare.</p>
+        )}
+
+        {!loadingArrivals && !errorArrivals && arrivals.length > 0 && (
+          <>
+            <h2>Arrivées</h2>
+            <table className="table table-striped">
+              <thead>
+                <tr>
+                  <th>Heure</th>
+                  <th>Train</th>
+                  <th>Provenance</th>
+                  <th>Voie</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {arrivals.map(schedule => {
+                  const time = schedule.arrivalTime;
+                  const origin = schedule.departureStation;
+                  const status = schedule.isCancelled ? 'Supprimé' : (schedule.delayMinutes ? `Retard ${schedule.delayMinutes} min` : 'À l\'heure');
+
+                  return (
+                    <tr key={schedule.id}>
+                      <td>{time || '-'}</td>
+                      <td>{schedule.trainNumber}</td>
+                      <td>{origin}</td>
+                      <td>{schedule.track || '-'}</td>
+                      <td>{status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </Layout>
