@@ -5,7 +5,7 @@ const StationForm = ({
   setName,
   categories,
   setCategories,
-  allCategories,
+  allCategories = [], // default to empty array to avoid undefined
   handleCategoryChange,
   handleSubmit,
   editIndex,
