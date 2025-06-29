@@ -2,10 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/api/entreprise": "pages/api/entreprise.js",
-  "/api/track-assignments": "pages/api/track-assignments.js",
-  "/api/auth/login": "pages/api/auth/login.js",
-  "/admin/[station]": "pages/admin/[station].js",
-  "/admin": "pages/admin.js",
-  "/login": "pages/login.js"
+  "/login": "pages/login.js",
+  "/horaires-par-gare/[station]": "pages/horaires-par-gare/[station].js"
 }

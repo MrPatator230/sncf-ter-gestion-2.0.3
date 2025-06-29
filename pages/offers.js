@@ -12,6 +12,13 @@ import {
 } from '../utils/dateUtils';
 import { getDelayedTime } from '../utils/scheduleUtils';
 
+// Helper function to format time string "HH:mm" to "HHhmm"
+const formatTimeHHhmm = (timeStr) => {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  return `${hours}h${minutes}`;
+};
+
 // Mapping des jours en français vers l'anglais (utilisé uniquement pour le filtrage)
 const DAYS_MAPPING = {
   'lundi': 'Monday',
@@ -37,12 +44,9 @@ export default function Offers() {
 
       const fetchSchedules = async () => {
         try {
+          // Call API with only station=departureStation
           const params = new URLSearchParams({
-            departureStation,
-            arrivalStation,
-            viaStation: viaStation || '',
-            departureDate,
-            returnDate: returnDate || ''
+            station: departureStation
           });
 
           const response = await fetch(`/api/schedules/by-station?${params.toString()}`);
@@ -52,48 +56,27 @@ export default function Offers() {
           const allSchedules = await response.json();
           console.log('Fetched schedules:', allSchedules);
 
-          // Filtrer les horaires pour l'aller
+          // Filter schedules client-side for departureStation, arrivalStation, viaStation, and joursCirculation
           let departureSchedules = allSchedules.filter(schedule => {
-            console.log('Checking schedule:', schedule);
-            // Vérifier si le train correspond au trajet direct
-            const matchesDirectRoute = schedule.departureStation === departureStation &&
-              schedule.arrivalStation === arrivalStation;
+            // Check if schedule matches departureStation and arrivalStation or viaStation in servedStations
+            const matchesDeparture = schedule.departureStation === departureStation || 
+              (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === departureStation));
+            const matchesArrival = schedule.arrivalStation === arrivalStation || 
+              (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === arrivalStation));
+            const matchesVia = !viaStation || (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === viaStation));
 
-            // Vérifier si le trajet correspond via les gares desservies
-            const matchesServedStations = schedule.servedStations?.some(station => {
-              const stationIndex = schedule.servedStations.findIndex(s => s.name === station.name);
-              const departureIndex = schedule.departureStation === departureStation ? -1 :
-                schedule.servedStations.findIndex(s => s.name === departureStation);
-              const arrivalIndex = schedule.arrivalStation === arrivalStation ? schedule.servedStations.length :
-                schedule.servedStations.findIndex(s => s.name === arrivalStation);
-
-              return (
-                // La gare de départ est soit la gare principale soit une gare desservie
-                (schedule.departureStation === departureStation || departureIndex !== -1) &&
-                // La gare d'arrivée est soit la gare principale soit une gare desservie
-                (schedule.arrivalStation === arrivalStation || arrivalIndex !== -1) &&
-                // Si une gare via est spécifiée, elle doit être dans les gares desservies entre départ et arrivée
-                (!viaStation || (
-                  station.name === viaStation &&
-                  stationIndex > (departureIndex === -1 ? -1 : departureIndex) &&
-                  stationIndex < (arrivalIndex === -1 ? schedule.servedStations.length : arrivalIndex)
-                ))
-              );
-            });
-
-            // Vérifier si le train circule ce jour de la semaine
+            // Check if train runs on the selected day
             const dayOfWeek = formatDay(new Date(departureDate)).toLowerCase();
             const englishDayOfWeek = DAYS_MAPPING[dayOfWeek];
             const runsOnThisDay = schedule.joursCirculation?.includes(englishDayOfWeek);
 
-            return (matchesDirectRoute || matchesServedStations) && runsOnThisDay;
+            return matchesDeparture && matchesArrival && matchesVia && runsOnThisDay;
           }).map(schedule => {
-            // Créer une copie de l'horaire pour l'adapter à l'affichage
+            // Adapt schedule times for display
             const adaptedSchedule = { ...schedule };
 
-            // Si la gare de départ est une gare desservie, ajuster les horaires
             if (departureStation !== schedule.departureStation) {
-              const servedStation = schedule.servedStations.find(s => s.name === departureStation);
+              const servedStation = schedule.servedStations.find(s => (typeof s === 'object' ? s.name : s) === departureStation);
               if (servedStation) {
                 adaptedSchedule.displayDepartureTime = servedStation.departureTime;
                 adaptedSchedule.displayDepartureStation = departureStation;
@@ -103,9 +86,8 @@ export default function Offers() {
               adaptedSchedule.displayDepartureStation = schedule.departureStation;
             }
 
-            // Si la gare d'arrivée est une gare desservie, ajuster les horaires
             if (arrivalStation !== schedule.arrivalStation) {
-              const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
+              const servedStation = schedule.servedStations.find(s => (typeof s === 'object' ? s.name : s) === arrivalStation);
               if (servedStation) {
                 adaptedSchedule.displayArrivalTime = servedStation.arrivalTime;
                 adaptedSchedule.displayArrivalStation = arrivalStation;
@@ -118,49 +100,26 @@ export default function Offers() {
             return adaptedSchedule;
           });
 
-          // Filtrer les horaires pour le retour si une date est sélectionnée
+          // Filter return schedules similarly if returnDate is provided
           let returnSchedules = null;
           if (returnDate) {
             returnSchedules = allSchedules.filter(schedule => {
-              // Vérifier si le train correspond au trajet direct retour
-              const matchesDirectRoute = schedule.departureStation === arrivalStation &&
-                schedule.arrivalStation === departureStation;
+              const matchesDeparture = schedule.departureStation === arrivalStation || 
+                (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === arrivalStation));
+              const matchesArrival = schedule.arrivalStation === departureStation || 
+                (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === departureStation));
+              const matchesVia = !viaStation || (schedule.servedStations && schedule.servedStations.some(s => (typeof s === 'object' ? s.name : s) === viaStation));
 
-              // Vérifier si le trajet retour correspond via les gares desservies
-              const matchesServedStations = schedule.servedStations?.some(station => {
-                const stationIndex = schedule.servedStations.findIndex(s => s.name === station.name);
-                const departureIndex = schedule.departureStation === arrivalStation ? -1 :
-                  schedule.servedStations.findIndex(s => s.name === arrivalStation);
-                const arrivalIndex = schedule.arrivalStation === departureStation ? schedule.servedStations.length :
-                  schedule.servedStations.findIndex(s => s.name === departureStation);
-
-                return (
-                  // La gare de départ est soit la gare principale soit une gare desservie
-                  (schedule.departureStation === arrivalStation || departureIndex !== -1) &&
-                  // La gare d'arrivée est soit la gare principale soit une gare desservie
-                  (schedule.arrivalStation === departureStation || arrivalIndex !== -1) &&
-                  // Si une gare via est spécifiée, elle doit être dans les gares desservies entre départ et arrivée
-                  (!viaStation || (
-                    station.name === viaStation &&
-                    stationIndex > (departureIndex === -1 ? -1 : departureIndex) &&
-                    stationIndex < (arrivalIndex === -1 ? schedule.servedStations.length : arrivalIndex)
-                  ))
-                );
-              });
-
-              // Vérifier si le train circule ce jour de la semaine
               const dayOfWeek = formatDay(new Date(returnDate)).toLowerCase();
               const englishDayOfWeek = DAYS_MAPPING[dayOfWeek];
               const runsOnThisDay = schedule.joursCirculation?.includes(englishDayOfWeek);
 
-              return (matchesDirectRoute || matchesServedStations) && runsOnThisDay;
+              return matchesDeparture && matchesArrival && matchesVia && runsOnThisDay;
             }).map(schedule => {
-              // Créer une copie de l'horaire pour l'adapter à l'affichage
               const adaptedSchedule = { ...schedule };
 
-              // Si la gare de départ est une gare desservie, ajuster les horaires
               if (arrivalStation !== schedule.departureStation) {
-                const servedStation = schedule.servedStations.find(s => s.name === arrivalStation);
+                const servedStation = schedule.servedStations.find(s => (typeof s === 'object' ? s.name : s) === arrivalStation);
                 if (servedStation) {
                   adaptedSchedule.displayDepartureTime = servedStation.departureTime;
                   adaptedSchedule.displayDepartureStation = arrivalStation;
@@ -170,9 +129,8 @@ export default function Offers() {
                 adaptedSchedule.displayDepartureStation = schedule.departureStation;
               }
 
-              // Si la gare d'arrivée est une gare desservie, ajuster les horaires
               if (departureStation !== schedule.arrivalStation) {
-                const servedStation = schedule.servedStations.find(s => s.name === departureStation);
+                const servedStation = schedule.servedStations.find(s => (typeof s === 'object' ? s.name : s) === departureStation);
                 if (servedStation) {
                   adaptedSchedule.displayArrivalTime = servedStation.arrivalTime;
                   adaptedSchedule.displayArrivalStation = departureStation;
@@ -361,18 +319,18 @@ export default function Offers() {
                            <div className="departure">
                            <div className="time">
                              {train.isCancelled ? (
-                               train.displayDepartureTime
+                               formatTimeHHhmm(train.displayDepartureTime)
                              ) : train.delayMinutes ? (
                                <>
                                  <div className="delayed-time">
                                    {getDelayedTime(train.displayDepartureTime, train.delayMinutes)}
                                  </div>
                                  <div className="original-time">
-                                   {train.displayDepartureTime}
+                                   {formatTimeHHhmm(train.displayDepartureTime)}
                                  </div>
                                </>
                              ) : (
-                               train.displayDepartureTime
+                               formatTimeHHhmm(train.displayDepartureTime)
                              )}
                            </div>
                            <div className="station">{train.displayDepartureStation}</div>
@@ -386,18 +344,18 @@ export default function Offers() {
                          <div className="arrival">
                            <div className="time">
                              {train.isCancelled ? (
-                               train.displayArrivalTime
+                               formatTimeHHhmm(train.displayArrivalTime)
                              ) : train.delayMinutes ? (
                                <>
                                  <div className="delayed-time">
                                    {getDelayedTime(train.displayArrivalTime, train.delayMinutes)}
                                  </div>
                                  <div className="original-time">
-                                   {train.displayArrivalTime}
+                                   {formatTimeHHhmm(train.displayArrivalTime)}
                                  </div>
                                </>
                              ) : (
-                               train.displayArrivalTime
+                               formatTimeHHhmm(train.displayArrivalTime)
                              )}
                            </div>
                            <div className="station">{train.displayArrivalStation}</div>

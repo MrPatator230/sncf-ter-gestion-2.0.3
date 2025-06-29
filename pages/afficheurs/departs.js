@@ -14,6 +14,13 @@ const getCurrentDay = () => {
   return days[now.getDay()];
 };
 
+// Helper function to format time string "HH:mm" to 'HH"h"mm'
+const formatTimeHHhmmQuoted = (timeStr) => {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  return `${hours}:${minutes}`;
+};
+
 export default function AfficheursPublic() {
   const router = useRouter();
   const { gare } = router.query;
@@ -196,9 +203,9 @@ export default function AfficheursPublic() {
                     </>
                   )}
                 </div>
-                <time className={styles.departureTime} dateTime={displayTime} style={{ color: '#ffea00' }}>
-                  {displayTime.replace(':', 'h')}
-                </time>
+                  <time className={styles.departureTime} dateTime={displayTime} style={{ color: '#ffea00' }}>
+                    {formatTimeHHhmmQuoted(displayTime)}
+                  </time>
               </section>
               <section className={styles.middleSection}>
                 <div className={styles.destination}>{schedule.arrivalStation}</div>

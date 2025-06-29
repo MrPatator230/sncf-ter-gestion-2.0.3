@@ -21,7 +21,7 @@
 .scheduleRow {
   display: flex;
   align-items: center;
-  padding: 0px 1rem; /* Added 10px top and bottom padding */
+  padding: 0px 0rem; /* Added 10px top and bottom padding */
   height: 10px;
   font-size: 1.4rem;
   border-bottom: 0px solid #0064ab;
@@ -357,8 +357,8 @@
   font-weight: 600;
   font-size: 1.8rem;
   white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow-x: hidden; /* Changed from auto to hidden to prevent scroll */
+  overflow-y: hidden; /* Changed from auto to hidden to prevent scroll */
   user-select: none;
   display: block;
   width: 100%;
@@ -391,13 +391,12 @@
 }
 
 .marquee {
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to visible to prevent clipping */
   white-space: nowrap;
   width: 100%;
   position: relative;
   box-sizing: border-box;
 }
-
 .marqueeContent {
   display: flex;
   padding-left: 100%;
