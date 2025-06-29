@@ -1,8 +1,8 @@
 import React from 'react';
 
 const StationsList = ({
-  paginatedStations,
-  categoryColors,
+  paginatedStations = [], // default to empty array
+  categoryColors = {}, // default to empty object
   currentPage,
   pageSize,
   handleEdit,
@@ -32,8 +32,8 @@ const StationsList = ({
               <tr key={index}>
                 <td>{station.name}</td>
                 <td>
-                  {station.categories.map((cat) => (
-                    <span key={cat} className={`badge bg-${categoryColors[cat]} me-1`}>
+                  {station.categories && Array.isArray(station.categories) && station.categories.map((cat) => (
+                    <span key={cat} className={`badge bg-${categoryColors[cat] || 'secondary'} me-1`}>
                       {cat}
                     </span>
                   ))}
