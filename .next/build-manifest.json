@@ -28,20 +28,20 @@
       "static/chunks/main.js",
       "static/chunks/pages/admin.js"
     ],
-    "/admin/gestion-horaires": [
+    "/admin/[station]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/gestion-horaires.js"
+      "static/chunks/pages/admin/[station].js"
     ],
     "/admin/stations": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/admin/stations.js"
     ],
-    "/offers": [
+    "/login": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/offers.js"
+      "static/chunks/pages/login.js"
     ]
   },
   "ampFirstPages": []

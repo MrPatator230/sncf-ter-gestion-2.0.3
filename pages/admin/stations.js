@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
+import StationForm from './StationForm';
+import StationsList from './StationsList';
 
 export default function Stations() {
   const [stations, setStations] = useState([]);
@@ -115,109 +117,40 @@ export default function Stations() {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
+  const cancelEdit = () => {
+    setName('');
+    setCategories([]);
+    setEditIndex(null);
+  };
+
   return (
     <div id="wrapper" style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
       <div id="content-wrapper" className="d-flex flex-column flex-grow-1">
         <div id="content" className="container mt-4 flex-grow-1">
           <h1>Gestion de gares</h1>
-          <form onSubmit={handleSubmit} className="mb-4">
-            <div className="form-group mb-3">
-              <label htmlFor="stationName">Nom de la gare</label>
-              <input
-                type="text"
-                id="stationName"
-                className="form-control"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group mb-3">
-              <label htmlFor="categories">Catégories</label>
-              <select
-                id="categories"
-                className="form-control"
-                multiple
-                value={categories}
-                onChange={handleCategoryChange}
-                required
-              >
-                {allCategories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn btn-primary">
-              {editIndex !== null ? 'Modifier la gare' : 'Ajouter la gare'}
-            </button>
-            {editIndex !== null && (
-              <button
-                type="button"
-                className="btn btn-secondary ms-2"
-                onClick={() => {
-                  setName('');
-                  setCategories([]);
-                  setEditIndex(null);
-                }}
-              >
-                Annuler
-              </button>
-            )}
-          </form>
-
-          <h2>Liste des gares créées</h2>
-          <table className="table table-striped">
-            <thead>
-              <tr>
-                <th>Nom de la gare</th>
-                <th>Catégories</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedStations.length === 0 ? (
-                <tr>
-                  <td colSpan="3" className="text-center">Aucune gare créée</td>
-                </tr>
-              ) : (
-                paginatedStations.map((station, index) => (
-                  <tr key={index}>
-                    <td>{station.name}</td>
-                    <td>
-                      {station.categories.map((cat) => (
-                        <span key={cat} className={`badge bg-${categoryColors[cat]} me-1`}>
-                          {cat}
-                        </span>
-                      ))}
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-warning me-2" onClick={() => handleEdit((currentPage - 1) * pageSize + index)}>Modifier</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete((currentPage - 1) * pageSize + index)}>Supprimer</button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          {totalPages > 1 && (
-            <nav aria-label="Page navigation example">
-              <ul className="pagination justify-content-center">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={goToPreviousPage}>Précédent</button>
-                </li>
-                <li className="page-item disabled">
-                  <span className="page-link">
-                    Page {currentPage} sur {totalPages}
-                  </span>
-                </li>
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={goToNextPage}>Suivant</button>
-                </li>
-              </ul>
-            </nav>
-          )}
+          <StationForm
+            name={name}
+            setName={setName}
+            categories={categories}
+            setCategories={setCategories}
+            allCategories={allCategories}
+            handleCategoryChange={handleCategoryChange}
+            handleSubmit={handleSubmit}
+            editIndex={editIndex}
+            cancelEdit={cancelEdit}
+          />
+          <StationsList
+            paginatedStations={paginatedStations}
+            categoryColors={categoryColors}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+            totalPages={totalPages}
+            goToPreviousPage={goToPreviousPage}
+            goToNextPage={goToNextPage}
+          />
         </div>
       </div>
     </div>
