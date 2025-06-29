@@ -2,9 +2,11 @@ import pool from '../../utils/db';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    let connection;
     try {
-      const [stations] = await pool.query('SELECT * FROM stations ORDER BY id ASC');
-      const [categories] = await pool.query('SELECT * FROM station_categories');
+      connection = await pool.getConnection();
+      const [stations] = await connection.query('SELECT * FROM stations ORDER BY id ASC');
+      const [categories] = await connection.query('SELECT * FROM station_categories');
 
       // Map categories to stations
       const stationCategoriesMap = {};
@@ -25,6 +27,8 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('Error fetching stations:', error);
       res.status(500).json({ error: 'Failed to fetch stations' });
+    } finally {
+      if (connection) connection.release();
     }
   } else if (req.method === 'POST') {
     const stations = req.body;

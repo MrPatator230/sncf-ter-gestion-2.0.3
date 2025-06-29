@@ -17,7 +17,24 @@ const validateSchedule = (schedule) => {
 // Fonction pour normaliser les gares desservies
 const normalizeServedStations = (servedStations) => {
   if (!servedStations) return [];
-  return servedStations.map(station => {
+
+  let parsedStations;
+  if (typeof servedStations === 'string') {
+    try {
+      parsedStations = JSON.parse(servedStations);
+    } catch (e) {
+      console.error("Failed to parse servedStations", e);
+      return [];
+    }
+  } else {
+    parsedStations = servedStations;
+  }
+
+  if (!Array.isArray(parsedStations)) {
+    return [];
+  }
+
+  return parsedStations.map(station => {
     if (typeof station === 'string') {
       return {
         name: station,
@@ -26,7 +43,7 @@ const normalizeServedStations = (servedStations) => {
       };
     }
     return station;
-  }).filter(station => station.name);
+  }).filter(station => station && station.name);
 };
 
 // Fonction pour calculer l'heure retardée

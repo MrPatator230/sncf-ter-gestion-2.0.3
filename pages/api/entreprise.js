@@ -2,8 +2,10 @@ import pool from '../../utils/db';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    let connection;
     try {
-      const [settingsRows] = await pool.query('SELECT * FROM entreprise_settings ORDER BY id DESC LIMIT 1');
+      connection = await pool.getConnection();
+      const [settingsRows] = await connection.query('SELECT * FROM entreprise_settings ORDER BY id DESC LIMIT 1');
       if (settingsRows.length === 0) {
         return res.status(200).json({
           entrepriseSettings: null,
@@ -13,8 +15,8 @@ export default async function handler(req, res) {
       }
       const entrepriseSettings = settingsRows[0];
 
-      const [footerRegions] = await pool.query('SELECT * FROM footer_regions WHERE entreprise_id = ?', [entrepriseSettings.id]);
-      const [trainTypes] = await pool.query('SELECT * FROM train_types WHERE entreprise_id = ?', [entrepriseSettings.id]);
+      const [footerRegions] = await connection.query('SELECT * FROM footer_regions WHERE entreprise_id = ?', [entrepriseSettings.id]);
+      const [trainTypes] = await connection.query('SELECT * FROM train_types WHERE entreprise_id = ?', [entrepriseSettings.id]);
 
       res.status(200).json({
         entrepriseSettings,
@@ -24,6 +26,8 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('Error fetching entreprise data:', error);
       res.status(500).json({ error: 'Failed to fetch entreprise data' });
+    } finally {
+      if (connection) connection.release();
     }
   } else if (req.method === 'POST') {
     const {

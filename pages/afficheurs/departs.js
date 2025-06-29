@@ -45,20 +45,44 @@ export default function AfficheursPublic() {
 
     async function fetchSchedules() {
       if (gare) {
-        const stationSchedules = getStationSchedules(gare);
-        const filteredByType = filterSchedulesByType(stationSchedules, gare, 'departures');
-
-        // Filter schedules by current day of operation
-        const currentDay = getCurrentDay();
-        const filteredByDay = filteredByType.filter(schedule => {
-          if (!schedule.joursCirculation || schedule.joursCirculation.length === 0) {
-            return true; // If no joursCirculation specified, assume train runs every day
+        try {
+          const res = await fetch(`/api/schedules/by-station?station=${gare}`);
+          if (!res.ok) {
+            throw new Error(`API request failed: ${res.status}`);
           }
-          return schedule.joursCirculation.includes(currentDay);
-        });
+          
+          let allSchedules = await res.json();
 
-        const sorted = sortSchedulesByTime(filteredByDay, gare, 'departures');
-        setSchedules(sorted);
+          // The API may return stringified JSON for some fields, so we parse them.
+          const schedulesWithParsedData = allSchedules.map(s => {
+            try {
+              return {
+                ...s,
+                joursCirculation: s.joursCirculation && typeof s.joursCirculation === 'string' ? JSON.parse(s.joursCirculation) : s.joursCirculation || [],
+              };
+            } catch (e) {
+              console.warn(`Failed to parse data for schedule ${s.id}`, e);
+              return { ...s, joursCirculation: [] }; // Fallback
+            }
+          });
+
+          const filteredByType = filterSchedulesByType(schedulesWithParsedData, gare, 'departures');
+
+          // Filter schedules by current day of operation
+          const currentDay = getCurrentDay();
+          const filteredByDay = filteredByType.filter(schedule => {
+            if (!schedule.joursCirculation || schedule.joursCirculation.length === 0) {
+              return true; // If no joursCirculation specified, assume train runs every day
+            }
+            return schedule.joursCirculation.includes(currentDay);
+          });
+
+          const sorted = sortSchedulesByTime(filteredByDay, gare, 'departures');
+          setSchedules(sorted);
+        } catch (error) {
+          console.error('Failed to fetch schedules:', error);
+          setSchedules([]);
+        }
         setLoading(false);
       } else {
         setSchedules([]);
