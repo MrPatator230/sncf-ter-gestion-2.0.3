@@ -4,10 +4,5 @@
   "/_document": "pages/_document.js",
   "/admin": "pages/admin.js",
   "/admin/stations": "pages/admin/stations.js",
-  "/api/track-assignments": "pages/api/track-assignments.js",
-  "/api/entreprise": "pages/api/entreprise.js",
-  "/login": "pages/login.js",
-  "/admin/[station]": "pages/admin/[station].js",
-  "/api/auth/login": "pages/api/auth/login.js",
-  "/api/stations": "pages/api/stations.js"
+  "/login": "pages/login.js"
 }

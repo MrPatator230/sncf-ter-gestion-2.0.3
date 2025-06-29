@@ -42,45 +42,22 @@ export default function Admin() {
   }, [isAuthenticated, router]);
 
   useEffect(() => {
-    // Charger les données des stations
-    const savedStations = localStorage.getItem('stations');
-    if (savedStations) {
-      const stations = JSON.parse(savedStations);
-      setStationCount(stations.length);
-    }
-
-    // Charger les données des horaires
-    const savedSchedules = localStorage.getItem('schedules');
-    if (savedSchedules) {
-      const schedules = JSON.parse(savedSchedules);
-      setScheduleCount(schedules.length);
-      setOnTimeRatio(98);
-    }
-
-    // Simuler des activités récentes
-    setActivities([
-      {
-        title: 'Nouvelle annonce créée',
-        time: 'Il y a 5 minutes',
-        icon: 'campaign',
-        color: 'primary',
-        description: 'Annonce de retard pour le TER 857412'
-      },
-      {
-        title: 'Horaire modifié',
-        time: 'Il y a 15 minutes',
-        icon: 'schedule',
-        color: 'warning',
-        description: 'Modification de l\'horaire du train Paris-Lyon'
-      },
-      {
-        title: 'Nouvelle station ajoutée',
-        time: 'Il y a 1 heure',
-        icon: 'train',
-        color: 'success',
-        description: 'Station "Gare de Lyon-Part-Dieu" ajoutée'
+    async function fetchDashboardData() {
+      try {
+        const response = await fetch('/api/admin/dashboard');
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const data = await response.json();
+        setStationCount(data.stationCount);
+        setScheduleCount(data.scheduleCount);
+        setOnTimeRatio(data.onTimeRatio);
+        setActivities(data.activities);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
       }
-    ]);
+    }
+    fetchDashboardData();
   }, []);
 
   if (!isAuthenticated) {
