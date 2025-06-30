@@ -20,20 +20,25 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin/stations": [
+    "/admin": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/stations.js"
+      "static/chunks/pages/admin.js"
     ],
-    "/horaires-par-gare/[station]": [
+    "/admin/gestion-horaires": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/horaires-par-gare/[station].js"
+      "static/chunks/pages/admin/gestion-horaires.js"
     ],
-    "/login": [
+    "/afficheurs/afl/arrivees": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/login.js"
+      "static/chunks/pages/afficheurs/afl/arrivees.js"
+    ],
+    "/afficheurs/afl/departs": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/afficheurs/afl/departs.js"
     ]
   },
   "ampFirstPages": []
