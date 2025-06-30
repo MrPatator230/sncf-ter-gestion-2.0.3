@@ -7,6 +7,7 @@ export default function Stations() {
   const [stations, setStations] = useState([]);
   const [name, setName] = useState('');
   const [categories, setCategories] = useState([]);
+  const [locationType, setLocationType] = useState('Ville'); // default to Ville
   const [editIndex, setEditIndex] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -60,18 +61,19 @@ export default function Stations() {
     if (editIndex !== null) {
       // Update existing station
       const updatedStations = [...stations];
-      updatedStations[editIndex] = { name, categories };
+      updatedStations[editIndex] = { name, categories, locationType };
       setStations(updatedStations);
       saveStations(updatedStations);
       setEditIndex(null);
     } else {
       // Add new station
-      const updatedStations = [...stations, { name, categories }];
+      const updatedStations = [...stations, { name, categories, locationType }];
       setStations(updatedStations);
       saveStations(updatedStations);
     }
     setName('');
     setCategories([]);
+    setLocationType('Ville');
   };
 
   const handleCategoryChange = (e) => {
@@ -89,6 +91,7 @@ export default function Stations() {
     const station = stations[index];
     setName(station.name);
     setCategories(station.categories);
+    setLocationType(station.locationType || 'Ville');
     setEditIndex(index);
   };
 
@@ -134,6 +137,8 @@ export default function Stations() {
             setName={setName}
             categories={categories}
             setCategories={setCategories}
+            locationType={locationType}
+            setLocationType={setLocationType}
             allCategories={allCategories}
             handleCategoryChange={handleCategoryChange}
             handleSubmit={handleSubmit}

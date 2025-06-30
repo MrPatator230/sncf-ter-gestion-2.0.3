@@ -19,13 +19,14 @@ const StationsList = ({
           <tr>
             <th>Nom de la gare</th>
             <th>Catégories</th>
+            <th>Type de lieu</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {paginatedStations.length === 0 ? (
             <tr>
-              <td colSpan="3" className="text-center">Aucune gare créée</td>
+              <td colSpan="4" className="text-center">Aucune gare créée</td>
             </tr>
           ) : (
             paginatedStations.map((station, index) => (
@@ -38,6 +39,7 @@ const StationsList = ({
                     </span>
                   ))}
                 </td>
+                <td>{station.locationType || 'Ville'}</td>
                 <td>
                   <button className="btn btn-sm btn-warning me-2" onClick={() => handleEdit((currentPage - 1) * pageSize + index)}>Modifier</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete((currentPage - 1) * pageSize + index)}>Supprimer</button>

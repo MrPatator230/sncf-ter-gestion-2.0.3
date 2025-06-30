@@ -20,6 +20,7 @@ export default async function handler(req, res) {
       const stationsWithCategories = stations.map(station => ({
         id: station.id,
         name: station.name,
+        locationType: station.locationType || 'Ville',
         categories: stationCategoriesMap[station.id] || []
       }));
 
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
 
       // Insert new stations and categories
       for (const station of stations) {
-        const [result] = await connection.query('INSERT INTO stations (name) VALUES (?)', [station.name]);
+        const [result] = await connection.query('INSERT INTO stations (name, locationType) VALUES (?, ?)', [station.name, station.locationType || 'Ville']);
         const stationId = result.insertId;
         if (Array.isArray(station.categories)) {
           for (const category of station.categories) {

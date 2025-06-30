@@ -5,6 +5,8 @@ const StationForm = ({
   setName,
   categories,
   setCategories,
+  locationType,
+  setLocationType,
   allCategories = [], // default to empty array to avoid undefined
   handleCategoryChange,
   handleSubmit,
@@ -37,6 +39,19 @@ const StationForm = ({
           {allCategories.map((cat) => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
+        </select>
+      </div>
+      <div className="form-group mb-3">
+        <label htmlFor="locationType">Type de lieu</label>
+        <select
+          id="locationType"
+          className="form-control"
+          value={locationType}
+          onChange={(e) => setLocationType(e.target.value)}
+          required
+        >
+          <option value="Ville">Ville</option>
+          <option value="Interurbain">Interurbain</option>
         </select>
       </div>
       <button type="submit" className="btn btn-primary">

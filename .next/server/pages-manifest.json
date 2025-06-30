@@ -4,9 +4,12 @@
   "/_document": "pages/_document.js",
   "/api/schedules/by-station": "pages/api/schedules/by-station.js",
   "/afficheurs/afl/arrivees": "pages/afficheurs/afl/arrivees.js",
-  "/admin": "pages/admin.js",
-  "/afficheurs/afl/departs": "pages/afficheurs/afl/departs.js",
   "/admin/gestion-horaires": "pages/admin/gestion-horaires.js",
+  "/afficheurs/afl/departs": "pages/afficheurs/afl/departs.js",
   "/api/track-assignments": "pages/api/track-assignments.js",
-  "/api/entreprise": "pages/api/entreprise.js"
+  "/api/stations": "pages/api/stations.js",
+  "/login": "pages/login.js",
+  "/admin": "pages/admin.js",
+  "/api/entreprise": "pages/api/entreprise.js",
+  "/api/admin/dashboard": "pages/api/admin/dashboard.js"
 }

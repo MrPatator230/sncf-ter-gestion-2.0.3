@@ -30,8 +30,26 @@ export default function AFLDepartures() {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [displayIndex, setDisplayIndex] = useState(0);
+  const [stationInfo, setStationInfo] = useState(null);
 
   useEffect(() => {
+    async function fetchStationInfo() {
+      if (gare) {
+        try {
+          const res = await fetch('/api/stations');
+          if (!res.ok) {
+            throw new Error(`Failed to fetch stations: ${res.status}`);
+          }
+          const stations = await res.json();
+          const currentStation = stations.find(st => st.name === gare);
+          setStationInfo(currentStation || null);
+        } catch (error) {
+          console.error('Failed to fetch station info:', error);
+          setStationInfo(null);
+        }
+      }
+    }
+
     async function fetchSchedules() {
       if (gare) {
         try {
@@ -80,9 +98,14 @@ export default function AFLDepartures() {
       }
     }
 
-    fetchSchedules();
+    async function fetchData() {
+      await fetchStationInfo();
+      await fetchSchedules();
+    }
 
-    const intervalId = setInterval(fetchSchedules, 10000);
+    fetchData();
+
+    const intervalId = setInterval(fetchData, 10000);
     return () => clearInterval(intervalId);
   }, [gare]);
 

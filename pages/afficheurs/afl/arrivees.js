@@ -53,8 +53,19 @@ export default function AFLDepartures() {
             }
           });
 
+          // Add arrivalTrack from trackAssignments context for current gare
+          console.log('trackAssignments:', trackAssignments);
+          const schedulesWithTrack = schedulesWithParsedData.map(schedule => {
+            const arrivalTrack = trackAssignments && trackAssignments[schedule.id] ? trackAssignments[schedule.id][gare] : undefined;
+            return {
+              ...schedule,
+              arrivalTrack: arrivalTrack || '-',
+            };
+          });
+          console.log('schedulesWithTrack:', schedulesWithTrack);
+
           // Filter schedules where gare is either departure station or served station
-          const filteredByType = filterSchedulesByType(schedulesWithParsedData, gare, 'departures').filter(schedule => {
+          const filteredByType = filterSchedulesByType(schedulesWithTrack, gare, 'departures').filter(schedule => {
             const normalizedStations = schedule.servedStations ? schedule.servedStations.map(station => (typeof station === 'object' ? station.name : station)) : [];
             return schedule.departureStation === gare || normalizedStations.includes(gare);
           });
@@ -266,7 +277,7 @@ fill="#ffffff"/>
                       fill="#cf0a0a"/>
                     </svg>
                   ) : (
-                    <div>{schedule.arrivalTrack || '-'}</div>
+                    <div>{trackAssignments[schedule.id]?.[gare] || schedule.track || '-'}</div>
                   )}
                 </section>
               </li>

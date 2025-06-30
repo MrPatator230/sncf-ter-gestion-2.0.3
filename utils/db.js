@@ -7,7 +7,6 @@ const pool = mysql.createPool({
   password: process.env.MYSQL_PASSWORD || '',
   database: process.env.MYSQL_DATABASE || 'ter-sncf-bfc',
   waitForConnections: true,
-  connectionLimit: 50000000,
   queueLimit: 1000,
 });
 

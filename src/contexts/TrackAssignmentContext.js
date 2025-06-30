@@ -6,7 +6,7 @@ export function TrackAssignmentProvider({ children }) {
   const [trackAssignments, setTrackAssignments] = useState({});
 
   useEffect(() => {
-    // Load track assignments from API on mount
+    // Load track assignments from API on mount and poll every 10 seconds
     const fetchTrackAssignments = async () => {
       try {
         const response = await fetch('/api/track-assignments');
@@ -22,6 +22,9 @@ export function TrackAssignmentProvider({ children }) {
     };
 
     fetchTrackAssignments();
+    const intervalId = setInterval(fetchTrackAssignments, 10000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const updateTrackAssignment = (scheduleId, station, track) => {

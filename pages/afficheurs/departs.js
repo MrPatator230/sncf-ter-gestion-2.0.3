@@ -34,6 +34,7 @@ export default function AfficheursPublic() {
   const [loading, setLoading] = useState(true);
   const [trainTypeLogos, setTrainTypeLogos] = useState({});
   const [displayIndex, setDisplayIndex] = useState(0);
+  const [stationInfo, setStationInfo] = useState(null);
 
   useEffect(() => {
     let intervalId;
@@ -47,6 +48,23 @@ export default function AfficheursPublic() {
         }
       } catch (error) {
         console.error('Failed to fetch train type logos:', error);
+      }
+    }
+
+    async function fetchStationInfo() {
+      if (gare) {
+        try {
+          const res = await fetch('/api/stations');
+          if (!res.ok) {
+            throw new Error(`Failed to fetch stations: ${res.status}`);
+          }
+          const stations = await res.json();
+          const currentStation = stations.find(st => st.name === gare);
+          setStationInfo(currentStation || null);
+        } catch (error) {
+          console.error('Failed to fetch station info:', error);
+          setStationInfo(null);
+        }
       }
     }
 
@@ -99,6 +117,7 @@ export default function AfficheursPublic() {
 
     async function fetchData() {
       await fetchTrainTypeLogos();
+      await fetchStationInfo();
       await fetchSchedules();
     }
 
@@ -244,12 +263,14 @@ export default function AfficheursPublic() {
                 const [hours, minutes] = displayTime.split(':').map(Number);
                 const departureDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
                 const diffMinutes = (departureDate - now) / 60000;
+                const locationType = stationInfo?.locationType || 'Ville';
+                const showPlatformTime = locationType === 'Ville' ? 20 : 720; // 20 minutes for Ville, 720 minutes (12h) for Interurbain
                 return (
                   <div
-                    className={`${styles.rightSection} ${!(diffMinutes <= 30 && diffMinutes >= 0) ? styles.hiddenSquare : ''}`}
-                    aria-hidden={!(diffMinutes <= 30 && diffMinutes >= 0)}
+                    className={`${styles.rightSection} ${!(diffMinutes <= showPlatformTime && diffMinutes >= 0) ? styles.hiddenSquare : ''}`}
+                    aria-hidden={!(diffMinutes <= showPlatformTime && diffMinutes >= 0)}
                   >
-                    {diffMinutes <= 30 && diffMinutes >= 0 ? (trackAssignments[schedule.id]?.[gare] || schedule.track || '-') : ''}
+                    {diffMinutes <= showPlatformTime && diffMinutes >= 0 ? (trackAssignments[schedule.id]?.[gare] || schedule.track || '-') : ''}
                   </div>
                 );
               })()}
