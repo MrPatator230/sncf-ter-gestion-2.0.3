@@ -181,7 +181,7 @@
 }
 
 .viaRow .arrow {
-  color: #00bfff;
+  color: rgb(41, 224, 93);
   font-weight: 900;
   font-size: 2rem;
   margin: 0 6px;
@@ -202,6 +202,8 @@
   align-items: center;
   margin-left: 30px;
   user-select: none;
+  max-width: 80px;
+  max-height: 80px;
 }
 
 .rightSection .label {
