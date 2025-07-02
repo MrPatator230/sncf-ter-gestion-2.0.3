@@ -60,7 +60,13 @@ export default function Admin() {
     fetchDashboardData();
   }, []);
 
-  if (!isAuthenticated) {
+  if (isAuthenticated === null) {
+    // Loading state, do not render or redirect yet
+    return null;
+  }
+
+  if (isAuthenticated === false) {
+    router.push('/admin/login');
     return null;
   }
 

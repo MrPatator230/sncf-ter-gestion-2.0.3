@@ -29,11 +29,6 @@ export default function Login() {
     return styles[`${region}Theme`];
   };
 
-  if (isAuthenticated === null) {
-    // Loading state, do not redirect yet
-    return null;
-  }
-
   if (isAuthenticated === true) {
     if (role === 'admin') {
       router.push('/admin');
@@ -43,9 +38,9 @@ export default function Login() {
     return null;
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = login(username, password);
+    const success = await login(username, password);
     if (!success) {
       setError('Nom d\'utilisateur ou mot de passe incorrect');
     }
