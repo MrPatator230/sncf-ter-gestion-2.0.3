@@ -29,7 +29,12 @@ export default function Login() {
     return styles[`${region}Theme`];
   };
 
-  if (isAuthenticated) {
+  if (isAuthenticated === null) {
+    // Loading state, do not redirect yet
+    return null;
+  }
+
+  if (isAuthenticated === true) {
     if (role === 'admin') {
       router.push('/admin');
     } else if (role === 'client') {
