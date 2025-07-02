@@ -12,6 +12,23 @@ const getCurrentDay = () => {
   return days[now.getDay()];
 };
 
+// Helper function to get next day string in English (e.g., 'Tuesday')
+const getNextDay = () => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const now = new Date();
+  const nextDayIndex = (now.getDay() + 1) % 7;
+  return days[nextDayIndex];
+};
+
+const isTimePassed = (timeStr) => {
+  if (!timeStr) return false;
+  const now = new Date();
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const scheduleTime = new Date();
+  scheduleTime.setHours(hours, minutes, 0, 0);
+  return now > scheduleTime;
+};
+
 // Helper function to format time string "HH:mm" to 'HH:mm'
 const formatTimeHHmm = (timeStr) => {
   if (!timeStr) return '';
@@ -19,7 +36,7 @@ const formatTimeHHmm = (timeStr) => {
   return `${hours}:${minutes}`;
 };
 
-export default function AFLArrivals() {
+export default function AflArrivee() {
   const router = useRouter();
   const { gare } = router.query;
 
@@ -27,7 +44,9 @@ export default function AFLArrivals() {
   const trackAssignmentsContext = useTrackAssignments();
   const trackAssignments = trackAssignmentsContext ? trackAssignmentsContext.trackAssignments : {};
 
-  const [schedules, setSchedules] = useState([]);
+  // Renamed variables to reflect arrivals context clearly
+  const [arrivalSchedules, setArrivalSchedules] = useState([]);
+  const [nextDayArrivalSchedules, setNextDayArrivalSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [stationInfo, setStationInfo] = useState(null);
@@ -72,7 +91,7 @@ export default function AFLArrivals() {
             }
           });
 
-          // Filter schedules where gare is either arrival station or served station
+          // Filter schedules where gare is either Arrival station or served station
           const filteredByType = filterSchedulesByType(schedulesWithParsedData, gare, 'arrivals').filter(schedule => {
             const normalizedStations = schedule.servedStations ? schedule.servedStations.map(station => (typeof station === 'object' ? station.name : station)) : [];
             return schedule.arrivalStation === gare || normalizedStations.includes(gare);
@@ -86,15 +105,37 @@ export default function AFLArrivals() {
             return schedule.joursCirculation.includes(currentDay);
           });
 
-          const sorted = sortSchedulesByTime(filteredByDay, gare, 'arrivals');
-          setSchedules(sorted);
+          // Filter out schedules whose arrival time is passed
+          const filteredByTime = filteredByDay.filter(schedule => {
+            const arrivalTime = getStationTime(schedule, gare, 'arrival');
+            return !isTimePassed(arrivalTime);
+          });
+
+          const sorted = sortSchedulesByTime(filteredByTime, gare, 'arrivals');
+          setArrivalSchedules(sorted);
+
+          // Also get next day arrival schedules
+          const nextDay = getNextDay();
+          const filteredByNextDay = filteredByType.filter(schedule => {
+            if (!schedule.joursCirculation || schedule.joursCirculation.length === 0) {
+              return true;
+            }
+            return schedule.joursCirculation.includes(nextDay);
+          });
+          const filteredNextDayByTime = filteredByNextDay.filter(schedule => {
+            const arrivalTime = getStationTime(schedule, gare, 'arrival');
+            return !isTimePassed(arrivalTime);
+          });
+          const sortedNextDay = sortSchedulesByTime(filteredNextDayByTime, gare, 'arrivals');
+          setNextDayArrivalSchedules(sortedNextDay);
         } catch (error) {
           console.error('Failed to fetch schedules:', error);
-          setSchedules([]);
+          setArrivalSchedules([]);
+          setNextDayArrivalSchedules([]);
         }
         setLoading(false);
       } else {
-        setSchedules([]);
+        setArrivalSchedules([]);
         setLoading(false);
       }
     }
@@ -110,12 +151,23 @@ export default function AFLArrivals() {
     return () => clearInterval(intervalId);
   }, [gare]);
 
+  // Determine if last 4 schedules are displayed
+  const isLastFourSchedules = () => {
+    if (arrivalSchedules.length === 0) return false;
+    if (arrivalSchedules.length <= 4) return currentPage === 0;
+    return currentPage === 1;
+  };
+
   useEffect(() => {
+    if (arrivalSchedules.length < 4) {
+      setCurrentPage(0);
+      return;
+    }
     const pageInterval = setInterval(() => {
       setCurrentPage(prev => (prev + 1) % 2);
     }, 10000);
     return () => clearInterval(pageInterval);
-  }, []);
+  }, [arrivalSchedules.length]);
 
   useEffect(() => {
     const toggleInterval = setInterval(() => {
@@ -140,7 +192,7 @@ export default function AFLArrivals() {
     );
   }
 
-  if (schedules.length === 0) {
+  if (arrivalSchedules.length === 0) {
     return (
       <main className={styles.aflContainer} role="main" aria-label="Tableau des arrivées">
         <p className={styles.noSchedulesMessage}>Aucun horaire trouvé pour cette gare.</p>
@@ -148,7 +200,7 @@ export default function AFLArrivals() {
     );
   }
 
-  const schedulesToDisplay = currentPage === 0 ? schedules.slice(0, 4) : schedules.slice(4, 14);
+  const schedulesToDisplay = currentPage === 0 ? arrivalSchedules.slice(0, 4) : arrivalSchedules.slice(4, 14);
 
   return (
     <div lang="fr">
@@ -159,7 +211,9 @@ export default function AFLArrivals() {
         <h1 className={styles.headerTitle}>Arrivées</h1>
         <div className={styles.paginationDots}>
           <div className={`${styles.dot} ${currentPage === 0 ? styles.active : ''}`}>1</div>
-          <div className={`${styles.dot} ${currentPage === 1 ? styles.active : ''}`}>2</div>
+          {arrivalSchedules.length >= 4 && (
+            <div className={`${styles.dot} ${currentPage === 1 ? styles.active : ''}`}>2</div>
+          )}
         </div>
         <time className={styles.headerTime} dateTime={new Date().toISOString()}>
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -171,7 +225,7 @@ export default function AFLArrivals() {
             const globalIndex = currentPage === 0 ? index : index + 4;
             const status = getTrainStatus(schedule);
             const isEven = globalIndex % 2 === 0;
-            const displayTime = getStationTime(schedule, gare, 'arrival');
+            const arrivalTime = getStationTime(schedule, gare, 'arrival');
             let statusCode = 'on_time';
             if (schedule.isCancelled) {
               statusCode = 'canceled';
@@ -186,19 +240,15 @@ export default function AFLArrivals() {
             // Compose the "via" route with arrows and bold intermediate stations
             const viaStations = schedule.servedStations && schedule.servedStations.length > 0 ? schedule.servedStations : [];
 
-            // Extract stations before current gare in order: departureStation > served stations before gare
-            let stationsBeforeGare = [];
+            // Extract stations after current gare
+            let stationsAfterGare = [];
             if (viaStations.length > 0) {
               const normalizedStations = viaStations.map(station => (typeof station === 'object' ? station.name : station));
-              const gareIndex = normalizedStations.indexOf(gare);
-              if (gareIndex !== -1) {
-                stationsBeforeGare = normalizedStations.slice(0, gareIndex);
+              const startIndex = normalizedStations.indexOf(gare);
+              if (startIndex !== -1) {
+                stationsAfterGare = normalizedStations.slice(startIndex + 1);
               } else {
-                stationsBeforeGare = normalizedStations;
-              }
-              // Compose final list starting with departureStation
-              if (schedule.departureStation) {
-                stationsBeforeGare = [schedule.departureStation, ...stationsBeforeGare.filter(st => st !== schedule.departureStation)];
+                stationsAfterGare = normalizedStations;
               }
             }
 
@@ -211,11 +261,11 @@ export default function AFLArrivals() {
                 <section className={styles.leftSection}>
                   {globalIndex < 4 ? (
                     <>
-                      <time className={styles.departureTime} dateTime={displayTime} style={{ color: '#dfff00', fontWeight: '900' }}>
+                      <time className={styles.arrivalTime} dateTime={displayTime} style={{ color: '#dfff00', fontWeight: '900' }}>
                         {formatTimeHHmm(displayTime)}
                       </time>
                       <div className={styles.statusBadge} style={{ backgroundColor: (() => {
-                  if (statusCode === 'on_time') return '#187936'; // green
+                  if (statusCode === 'on_time') return '#0057b8'; // blue
                   if (statusCode === 'delayed') return '#ff7f50'; // coral for delayed
                   if (statusCode === 'canceled') return '#cf0a0a'; // canceled Red
                   return '#0057b8';
@@ -224,7 +274,7 @@ export default function AFLArrivals() {
                     <>
                       <svg viewBox="0 0 500 500" style={{ height: '1.8rem', width: '2rem', marginRight: '1rem', display: 'block', marginTop: 'auto', marginBottom: 'auto' }} aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="250" cy="250" r="260" fill="#ffffff" />
-                        <path d="M493.0162,131.3881,167.6317,431.1571c-8.14,7.3934-21.2841,7.3934-29.0509,0L6.9931,310.1741a17.9886,17.9886,0,0,1,0-26.81l38.7594-35.8468c8.29-7.1694,21.2094-7.1694,28.9762,0l63.7774,58.3257c7.7669,7.4681,20.9107,7.4681,29.0509,0l257.5-237.1117a22.0339,22.0339,0,0,1,28.9762,0l38.9087,35.7721a18.0157,18.0157,0,0,1,.0747,26.8851Z" fill="#187936" />
+                        <path d="M493.0162,131.3881,167.6317,431.1571c-8.14,7.3934-21.2841,7.3934-29.0509,0L6.9931,310.1741a17.9886,17.9886,0,0,1,0-26.81l38.7594-35.8468c8.29-7.1694,21.2094-7.1694,28.9762,0l63.7774,58.3257c7.7669,7.4681,20.9107,7.4681,29.0509,0l257.5-237.1117a22.0339,22.0339,0,0,1,28.9762,0l38.9087,35.7721a18.0157,18.0157,0,0,1,.0747,26.8851Z" fill="#0057b8" />
                       </svg>
                       <span>à l'heure</span>
                     </>
@@ -258,7 +308,7 @@ fill="#ffffff"/>
                   ) : (
                     showStatus ? (
                       <div className={styles.statusBadge} style={{ backgroundColor: (() => {
-                        if (statusCode === 'on_time') return '#187936'; // green
+                        if (statusCode === 'on_time') return '#0057b8'; // blue
                         if (statusCode === 'delayed') return '#ff7f50'; // coral for delayed
                         if (statusCode === 'canceled') return '#cf0a0a'; // canceled Red
                         return '#0057b8';
@@ -267,7 +317,7 @@ fill="#ffffff"/>
                           <>
                             <svg viewBox="0 0 500 500" style={{ height: '1.8rem', width: '2rem', marginRight: '1rem', display: 'block', marginTop: 'auto', marginBottom: 'auto' }} aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg">
                               <circle cx="250" cy="250" r="260" fill="#ffffff" />
-                              <path d="M493.0162,131.3881,167.6317,431.1571c-8.14,7.3934-21.2841,7.3934-29.0509,0L6.9931,310.1741a17.9886,17.9886,0,0,1,0-26.81l38.7594-35.8468c8.29-7.1694,21.2094-7.1694,28.9762,0l63.7774,58.3257c7.7669,7.4681,20.9107,7.4681,29.0509,0l257.5-237.1117a22.0339,22.0339,0,0,1,28.9762,0l38.9087,35.7721a18.0157,18.0157,0,0,1,.0747,26.8851Z" fill="#187936" />
+                              <path d="M493.0162,131.3881,167.6317,431.1571c-8.14,7.3934-21.2841,7.3934-29.0509,0L6.9931,310.1741a17.9886,17.9886,0,0,1,0-26.81l38.7594-35.8468c8.29-7.1694,21.2094-7.1694,28.9762,0l63.7774,58.3257c7.7669,7.4681,20.9107,7.4681,29.0509,0l257.5-237.1117a22.0339,22.0339,0,0,1,28.9762,0l38.9087,35.7721a18.0157,18.0157,0,0,1,.0747,26.8851Z" fill="#0057b8" />
                             </svg>
                             <span>à l'heure</span>
                           </>
@@ -297,7 +347,7 @@ fill="#ffffff"/>
                         )}
                       </div>
                     ) : (
-                      <time className={styles.departureTime} dateTime={displayTime} style={{ color: '#dfff00', fontWeight: '900' }}>
+                      <time className={styles.arrivalTime} dateTime={displayTime} style={{ color: '#dfff00', fontWeight: '900' }}>
                         {formatTimeHHmm(displayTime)}
                       </time>
                     )
@@ -307,7 +357,6 @@ fill="#ffffff"/>
                   <div>{schedule.trainType || ''}</div>
                   <div>{schedule.trainNumber || ''}</div>
                 </section>
-
                 <section className={styles.middleSection}>
                   <div className={styles.destinationRow}>
                     {isBus ? (
@@ -315,18 +364,18 @@ fill="#ffffff"/>
                     ) : (
                       <i className="bi bi-train-front-fill" aria-label="Train" role="img"></i>
                     )}
-                    <div>{schedule.departureStation}</div>
+                    <div>{schedule.arrivalStation}</div>
                   </div>
                   {currentPage === 0 && (
-                    <div className={styles.viaRow}>
-                      <span>Provenance</span>
-                      {stationsBeforeGare.map((station, idx) => (
-                          <span key={idx} className={idx === 0 ? styles.bold : ''}>
-                            {station}
-                            {idx < stationsBeforeGare.length - 1 && <span className={styles.arrow}></span>}
-                          </span>
-                        ))}
-                    </div>
+                  <div className={styles.viaRow}>
+                    <span>via</span>
+                    {stationsAfterGare.map((station, idx) => (
+                      <span key={idx} className={idx === 0 ? styles.bold : ''}>
+                        {station}
+                        {idx < stationsAfterGare.length - 1 && <span className={styles.arrow}></span>}
+                      </span>
+                    ))}
+                  </div>
                   )}
                 </section>
                 <section className={styles.rightSection} aria-label="Voie">

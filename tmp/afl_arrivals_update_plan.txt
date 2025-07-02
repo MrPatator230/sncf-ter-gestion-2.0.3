@@ -1,0 +1,33 @@
+Detailed Comparison and Update Plan for AFL Arrivals (arrivees.js) based on AFL Departures (departs.js)
+
+Information Gathered:
+- Both files have similar structure and functionalities: fetching schedules, filtering by type/day/time, sorting, pagination, status badges, and UI layout.
+- Differences:
+  - Filtering: arrivals.js filters by 'arrivals' type and arrivalStation; departs.js filters by 'departures' type and departureStation.
+  - Status badge colors differ (green for arrivals, blue for departures).
+  - The "via" stations are shown before gare in arrivals.js (Provenance) and after gare in departs.js (via).
+  - Pagination dots size and header font size differ slightly.
+  - Some minor differences in error/loading/no schedules messages aria-labels and text.
+  - The logic for determining if last 4 schedules are displayed is present in departs.js but not used in arrivals.js.
+  - The toggle for showing status text alternates every 2 seconds in both.
+  - The schedule slicing for pagination is similar but arrivals.js always shows 2 dots, departs.js conditionally shows the second dot.
+  - The track assignment display is similar.
+
+Plan:
+- Add the isLastFourSchedules function and use it in arrivals.js to control pagination display logic as in departs.js.
+- Adjust pagination dots display in arrivals.js to conditionally show the second dot only if schedules length >= 4, like in departs.js.
+- Review and unify aria-labels and messages for consistency.
+- Ensure the toggle for showing status text is consistent.
+- Verify and align any minor UI or logic differences found.
+- Keep the color scheme and "via" stations logic as is, since they are appropriate for arrivals.
+- Test the updated arrivals.js to confirm functionalities match departures.js.
+
+Dependent Files to Edit:
+- pages/afficheurs/afl/arrivees.js
+
+Followup Steps:
+- Implement the above changes.
+- Test arrivals AFL page.
+- Confirm with user if further enhancements are needed.
+
+Please confirm if I can proceed with implementing this update plan.

@@ -12,6 +12,23 @@ const getCurrentDay = () => {
   return days[now.getDay()];
 };
 
+// Helper function to get next day string in English (e.g., 'Tuesday')
+const getNextDay = () => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const now = new Date();
+  const nextDayIndex = (now.getDay() + 1) % 7;
+  return days[nextDayIndex];
+};
+
+const isTimePassed = (timeStr) => {
+  if (!timeStr) return false;
+  const now = new Date();
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const scheduleTime = new Date();
+  scheduleTime.setHours(hours, minutes, 0, 0);
+  return now > scheduleTime;
+};
+
 // Helper function to format time string "HH:mm" to 'HH:mm'
 const formatTimeHHmm = (timeStr) => {
   if (!timeStr) return '';
@@ -28,6 +45,7 @@ export default function AFLDepartures() {
   const trackAssignments = trackAssignmentsContext ? trackAssignmentsContext.trackAssignments : {};
 
   const [schedules, setSchedules] = useState([]);
+  const [nextDaySchedules, setNextDaySchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [stationInfo, setStationInfo] = useState(null);
@@ -86,11 +104,33 @@ export default function AFLDepartures() {
             return schedule.joursCirculation.includes(currentDay);
           });
 
-          const sorted = sortSchedulesByTime(filteredByDay, gare, 'departures');
+          // Filter out schedules whose departure time is passed
+          const filteredByTime = filteredByDay.filter(schedule => {
+            const departureTime = getStationTime(schedule, gare, 'departure');
+            return !isTimePassed(departureTime);
+          });
+
+          const sorted = sortSchedulesByTime(filteredByTime, gare, 'departures');
           setSchedules(sorted);
+
+          // Also get next day schedules
+          const nextDay = getNextDay();
+          const filteredByNextDay = filteredByType.filter(schedule => {
+            if (!schedule.joursCirculation || schedule.joursCirculation.length === 0) {
+              return true;
+            }
+            return schedule.joursCirculation.includes(nextDay);
+          });
+          const filteredNextDayByTime = filteredByNextDay.filter(schedule => {
+            const departureTime = getStationTime(schedule, gare, 'departure');
+            return !isTimePassed(departureTime);
+          });
+          const sortedNextDay = sortSchedulesByTime(filteredNextDayByTime, gare, 'departures');
+          setNextDaySchedules(sortedNextDay);
         } catch (error) {
           console.error('Failed to fetch schedules:', error);
           setSchedules([]);
+          setNextDaySchedules([]);
         }
         setLoading(false);
       } else {
@@ -110,12 +150,23 @@ export default function AFLDepartures() {
     return () => clearInterval(intervalId);
   }, [gare]);
 
+  // Determine if last 4 schedules are displayed
+  const isLastFourSchedules = () => {
+    if (schedules.length === 0) return false;
+    if (schedules.length <= 4) return currentPage === 0;
+    return currentPage === 1;
+  };
+
   useEffect(() => {
+    if (schedules.length < 4) {
+      setCurrentPage(0);
+      return;
+    }
     const pageInterval = setInterval(() => {
       setCurrentPage(prev => (prev + 1) % 2);
     }, 10000);
     return () => clearInterval(pageInterval);
-  }, []);
+  }, [schedules.length]);
 
   useEffect(() => {
     const toggleInterval = setInterval(() => {
@@ -159,7 +210,9 @@ export default function AFLDepartures() {
         <h1 className={styles.headerTitle}>Départs</h1>
         <div className={styles.paginationDots}>
           <div className={`${styles.dot} ${currentPage === 0 ? styles.active : ''}`}>1</div>
-          <div className={`${styles.dot} ${currentPage === 1 ? styles.active : ''}`}>2</div>
+          {schedules.length >= 4 && (
+            <div className={`${styles.dot} ${currentPage === 1 ? styles.active : ''}`}>2</div>
+          )}
         </div>
         <time className={styles.headerTime} dateTime={new Date().toISOString()}>
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
